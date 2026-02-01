@@ -1,188 +1,202 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# 1. Pagina Configuratie
-st.set_page_config(page_title="SST AI TRADING SUITE PRO", layout="wide")
+# Pagina instellingen
+st.set_page_config(page_title="SST AI TRADING SUITE", layout="wide")
 
-# API Keys
-FIN_KEY = "d5h3vm9r01qll3dlm2sgd5h3vm9r01qll3dlm2t0"
-GEM_KEY = "AIzaSyDTDyQWKgCJ3tvcexRCYYvuRUfkTpN4J5w"
+# API Config
+FIN_TOKEN = "d5h3vm9r01qll3dlm2sgd5h3vm9r01qll3dlm2t0"
+GEM_TOKEN = "AIzaSyDTDyQWKgCJ3tvcexRCYYvuRUfkTpN4J5w"
 
-# 2. CSS voor de Interface
+# CSS om Streamlit elementen te verbergen en tabs te stylen
 st.markdown("""
     <style>
-    .block-container { padding: 0px; background-color: #050608; }
-    .stTabs [data-baseweb="tab-list"] { background-color: #0d1117; padding: 10px; border-bottom: 1px solid #30363d; }
-    .stTabs [data-baseweb="tab"] { color: #8b949e; font-weight: bold; }
-    .stTabs [aria-selected="true"] { color: #2f81f7 !important; }
-    iframe { border: none !important; width: 100% !important; }
+    #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
+    .block-container { padding: 0px !important; }
+    iframe { height: 100vh !important; width: 100% !important; border: none !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. Streamlit Tabbladen Structuur
-t1, t2, t3, t4, t5, t6 = st.tabs([
-    "🚀 SMART TERMINAL", "🛡️ RISK & TIER", "📊 PRO SCANNER", 
-    "🔍 SIGNAL ANALYZER", "📈 TECH PRO", "🏛️ ARCHITECT"
-])
+# De volledige applicatie in één HTML/JS block voor maximale stabiliteit
+full_app_html = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {{ background-color: #050608; color: white; font-family: 'Inter', sans-serif; margin: 0; overflow: hidden; }}
+        .nav {{ display: flex; background: #0d1117; border-bottom: 1px solid #30363d; padding: 0 20px; }}
+        .nav-btn {{ padding: 15px 20px; cursor: pointer; color: #8b949e; border-bottom: 2px solid transparent; font-weight: bold; font-size: 13px; }}
+        .nav-btn.active {{ color: #2f81f7; border-bottom: 2px solid #2f81f7; background: rgba(47, 129, 247, 0.1); }}
+        .content {{ padding: 20px; height: calc(100vh - 60px); overflow-y: auto; }}
+        .tab-content {{ display: none; }}
+        .tab-content.active {{ display: block; }}
+        
+        /* UI Elements */
+        input, textarea {{ background: #161b22; border: 1px solid #30363d; color: white; padding: 12px; border-radius: 8px; font-family: inherit; }}
+        button {{ background: #238636; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; }}
+        .card {{ background: #161b22; border: 1px solid #30363d; padding: 20px; border-radius: 12px; margin-bottom: 20px; }}
+        .score-big {{ font-size: 4rem; font-weight: 900; margin: 10px 0; }}
+        table {{ width: 100%; border-collapse: collapse; }}
+        th {{ text-align: left; color: #8b949e; padding: 10px; border-bottom: 1px solid #30363d; }}
+        td {{ padding: 10px; border-bottom: 1px solid #21262d; }}
+    </style>
+</head>
+<body>
 
-# --- TAB 1: SMART TERMINAL ---
-with t1:
-    components.html(f"""
-    <div style="background:#050608; color:white; font-family:sans-serif; padding:15px; height:800px;">
-        <div style="display:flex; gap:10px; margin-bottom:15px;">
-            <input id="t1_in" value="NVDA" style="background:#111; border:1px solid #333; color:white; padding:12px; border-radius:8px; flex:1;">
-            <button onclick="runT1()" style="background:#2563eb; color:white; border:none; padding:12px 25px; border-radius:8px; cursor:pointer; font-weight:bold;">SCAN & SCORE</button>
-        </div>
-        <div style="display:grid; grid-template-columns: 1fr 2fr; gap:15px; margin-bottom:15px;">
-            <div style="background:#161b22; padding:15px; border-radius:10px; text-align:center; border:1px solid #333;">
-                <div style="font-size:0.7rem; color:#8b949e;">AI MOMENTUM SCORE</div>
-                <div id="t1_score" style="font-size:2.5rem; font-weight:900;">--</div>
-            </div>
-            <div id="t1_advice" style="background:#1e3a8a; padding:15px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:bold; border:1px solid #333;">READY FOR ANALYSIS</div>
-        </div>
-        <div id="t1_chart" style="height:550px; border-radius:12px; overflow:hidden; border:1px solid #333;"></div>
-    </div>
-    <script src="https://s3.tradingview.com/tv.js"></script>
-    <script>
-        async function runT1() {{
-            const sym = document.getElementById('t1_in').value.toUpperCase();
-            try {{
-                const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${{sym}}&token={FIN_KEY}`);
-                const d = await res.json();
-                const score = Math.min(Math.max(Math.round(50 + (d.dp * 12)), 5), 98);
-                document.getElementById('t1_score').innerText = score;
-                const adv = document.getElementById('t1_advice');
-                adv.innerText = score > 60 ? "STRONG BUY" : (score < 40 ? "SELL" : "NEUTRAL");
-                adv.style.background = score > 60 ? "#065f46" : (score < 40 ? "#7a1a1a" : "#1e3a8a");
-                new TradingView.widget({{"autosize":true, "symbol":sym, "interval":"D", "theme":"dark", "container_id":"t1_chart", "style":"1"}});
-            }} catch(e) {{ alert("Data Error T1"); }}
-        }}
-        window.onload = runT1;
-    </script>
-    """, height=850)
+<div class="nav">
+    <div class="nav-btn active" onclick="openTab(event, 't1')">🚀 TERMINAL</div>
+    <div class="nav-btn" onclick="openTab(event, 't2')">🛡️ RISK</div>
+    <div class="nav-btn" onclick="openTab(event, 't3')">📊 SCANNER</div>
+    <div class="nav-btn" onclick="openTab(event, 't4')">🔍 ANALYZER</div>
+    <div class="nav-btn" onclick="openTab(event, 't5')">📈 TECH PRO</div>
+    <div class="nav-btn" onclick="openTab(event, 't6')">🏛️ ARCHITECT</div>
+</div>
 
-# --- TAB 2: RISK & TIER ---
-with t2:
-    components.html(f"""
-    <div style="background:#0d1117; color:white; font-family:sans-serif; padding:20px; height:600px;">
-        <input id="t2_in" value="AAPL" style="background:#111; color:white; border:1px solid #333; padding:12px; border-radius:8px;">
-        <button onclick="runT2()" style="background:#1f6feb; color:white; border:none; padding:12px; border-radius:8px;">CALC RISK</button>
-        <div id="t2_out" style="margin-top:20px;"></div>
-    </div>
-    <script>
-        async function runT2() {{
-            const t = document.getElementById('t2_in').value.toUpperCase();
-            const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${{t}}&token={FIN_KEY}`);
-            const d = await r.json();
-            document.getElementById('t2_out').innerHTML = `<div style="background:#161b22; padding:20px; border-radius:10px;">
-                <h3>Price: $${{d.c}}</h3><p>Stop Loss: $${{(d.c*0.96).toFixed(2)}}</p><p>Target: $${{(d.c*1.08).toFixed(2)}}</p>
-            </div>`;
-        }}
-    </script>
-    """, height=600)
-
-# --- TAB 3: PRO SCANNER ---
-with t3:
-    components.html(f"""
-    <div style="background:#0d1117; color:white; font-family:sans-serif; padding:20px;">
-        <textarea id="t3_in" style="width:100%; height:50px; background:#111; color:#39d353; border:1px solid #333; padding:10px;">AAPL,NVDA,TSLA,AMD</textarea>
-        <button onclick="runT3()" style="width:100%; background:#238636; border:none; color:white; padding:10px; margin-top:10px;">SCAN BATCH</button>
-        <table style="width:100%; margin-top:15px; text-align:left;"><tbody id="t3_out"></tbody></table>
-    </div>
-    <script>
-        async function runT3() {{
-            const list = document.getElementById('t3_in').value.split(',');
-            const out = document.getElementById('t3_out'); out.innerHTML = 'Loading...';
-            let h = '';
-            for(let t of list) {{
-                const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${{t.trim().toUpperCase()}}&token={FIN_KEY}`);
-                const d = await r.json();
-                h += `<tr><td>${{t.toUpperCase()}}</td><td>$${{d.c}}</td><td style="color:${{d.dp>0?'#39d353':'#f85149'}}">${{d.dp.toFixed(2)}}%</td></tr>`;
-            }}
-            out.innerHTML = h;
-        }}
-    </script>
-    """, height=700)
-
-# --- TAB 4: SIGNAL ANALYZER ---
-with t4:
-    components.html(f"""
-    <div style="background:#050505; color:white; font-family:sans-serif; padding:20px;">
-        <input id="t4_in" value="TSLA" style="background:#111; color:white; border:1px solid #333; padding:12px; border-radius:8px;">
-        <button onclick="runT4()" style="background:#2ecc71; border:none; padding:12px 20px;">ANALYSE</button>
-        <div id="t4_out" style="margin-top:20px; display:grid; grid-template-columns:1fr 1fr; gap:10px;"></div>
-    </div>
-    <script>
-        async function runT4() {{
-            const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${{document.getElementById('t4_in').value.toUpperCase()}}&token={FIN_KEY}`);
-            const d = await r.json();
-            document.getElementById('t4_out').innerHTML = `
-                <div style="background:#111; padding:20px; border-radius:10px; border-top:3px solid #2ecc71;">SIGNAL: ${{d.dp > 0 ? 'BUY' : 'HOLD'}}</div>
-                <div style="background:#111; padding:20px; border-radius:10px; border-top:3px solid #2f81f7;">CHANGE: ${{d.dp.toFixed(2)}}%</div>
-            `;
-        }}
-    </script>
-    """, height=600)
-
-# --- TAB 5: TECH PRO ---
-with t5:
-    components.html(f"""
-    <div style="background:#050608; color:white; font-family:sans-serif; padding:20px;">
-        <input id="t5_in" style="background:#111; color:white; border:1px solid #333; padding:8px; width:100px;">
-        <button onclick="runT5()" style="background:#2f81f7; color:white; border:none; padding:8px 15px;">+</button>
-        <div id="t5_grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:15px; margin-top:20px;"></div>
-    </div>
-    <script>
-        async function runT5() {{
-            const t = document.getElementById('t5_in').value.toUpperCase();
-            const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${{t}}&token={FIN_KEY}`);
-            const d = await r.json();
-            const c = document.createElement('div');
-            c.style = "background:#161b22; padding:15px; border-radius:10px; border:1px solid #333;";
-            c.innerHTML = `<b>${{t}}</b><br>$${{d.c}}<br><span style="color:${{d.dp>0?'#39d353':'#f85149'}}">${{d.dp.toFixed(2)}}%</span>`;
-            document.getElementById('t5_grid').prepend(c);
-        }}
-    </script>
-    """, height=800)
-
-# --- TAB 6: SST ARCHITECT ---
-with t6:
-    components.html(f"""
-    <div style="background:#0d1117; color:white; font-family:sans-serif; padding:25px; border-radius:15px; border:1px solid #333;">
+<div class="content">
+    <div id="t1" class="tab-content active">
         <div style="display:flex; gap:10px; margin-bottom:20px;">
-            <input id="t6_in" placeholder="TICKER" style="background:#010409; border:1px solid #2f81f7; color:white; padding:12px; flex:1; border-radius:10px;">
-            <button onclick="runT6()" style="background:#238636; color:white; border:none; padding:12px 25px; border-radius:10px; font-weight:bold;">RUN AI</button>
+            <input id="in1" value="NVDA" style="flex:1;">
+            <button onclick="run1()">SCAN & SCORE</button>
         </div>
-        <div style="display:grid; grid-template-columns: 1fr 2fr; gap:20px;">
-            <div style="background:#161b22; padding:20px; border-radius:12px; text-align:center;">
-                <div style="color:#8b949e; font-size:0.8rem;">SCORE</div>
-                <div id="score6" style="font-size:3.5rem; font-weight:900;">--</div>
+        <div style="display:grid; grid-template-columns: 1fr 2fr; gap:20px; margin-bottom:20px;">
+            <div class="card" style="text-align:center;">
+                <div style="color:#8b949e;">AI SCORE</div>
+                <div id="sc1" class="score-big">--</div>
             </div>
-            <div style="background:#161b22; padding:20px; border-radius:12px;">
-                <h3 id="sym6" style="margin:0;">READY</h3>
-                <p id="ver6" style="color:#c9d1d9; font-size:0.9rem;">Voer ticker in.</p>
+            <div class="card" id="adv1" style="display:flex; align-items:center; justify-content:center; font-size:1.5rem; font-weight:bold;">READY</div>
+        </div>
+        <div id="ch1" style="height:500px; border-radius:12px; overflow:hidden; border:1px solid #30363d;"></div>
+    </div>
+
+    <div id="t2" class="tab-content">
+        <div class="card">
+            <h2>Risk & Tier</h2>
+            <input id="in2" placeholder="TICKER"> <button onclick="run2()">CALC</button>
+            <div id="out2" style="margin-top:20px;"></div>
+        </div>
+    </div>
+
+    <div id="t3" class="tab-content">
+        <div class="card">
+            <textarea id="in3" style="width:100%; margin-bottom:10px;">AAPL,NVDA,TSLA,AMD</textarea>
+            <button onclick="run3()" style="width:100%;">RUN BATCH SCAN</button>
+            <table><thead><tr><th>SYMBOL</th><th>PRICE</th><th>CHANGE</th></tr></thead><tbody id="out3"></tbody></table>
+        </div>
+    </div>
+
+    <div id="t4" class="tab-content">
+        <div class="card">
+            <input id="in4" value="AAPL"> <button onclick="run4()">ANALYZE</button>
+            <div id="out4" style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:20px;"></div>
+        </div>
+    </div>
+
+    <div id="t5" class="tab-content">
+        <div class="card">
+            <input id="in5" placeholder="ADD SYMBOL"> <button onclick="run5()">+</button>
+            <div id="out5" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:15px; margin-top:20px;"></div>
+        </div>
+    </div>
+
+    <div id="t6" class="tab-content">
+        <div class="card">
+            <input id="in6" placeholder="DEEP SCAN SYMBOL" style="width:70%;"> <button onclick="run6()">ARCHITECT SCAN</button>
+            <div style="display:grid; grid-template-columns:1fr 2fr; gap:20px; margin-top:20px;">
+                <div style="text-align:center;" class="card">
+                    <div style="color:#8b949e;">CONFIDENCE</div>
+                    <div id="sc6" class="score-big">--</div>
+                </div>
+                <div class="card">
+                    <h3 id="sym6">READY</h3>
+                    <p id="ver6" style="color:#c9d1d9; line-height:1.6;"></p>
+                </div>
             </div>
         </div>
     </div>
-    <script>
-        async function runT6() {{
-            const t = document.getElementById('t6_in').value.toUpperCase();
-            try {{
-                const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${{t}}&token={FIN_KEY}`);
-                const d = await r.json();
-                if(!d.c) throw "error";
-                document.getElementById('score6').innerText = Math.round(50 + (d.dp * 12));
-                document.getElementById('sym6').innerText = t;
-                const g = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEM_KEY}`, {{
-                    method: "POST", headers: {{"Content-Type":"application/json"}},
-                    body: JSON.stringify({{contents:[{{parts:[{{text:"Geef kort koopadvies voor "+t+" in het Nederlands."}}]}}]}})
-                }});
-                const gD = await g.json();
-                document.getElementById('ver6').innerText = gD.candidates[0].content.parts[0].text;
-            }} catch(e) {{ document.getElementById('score6').innerText = "ERR"; }}
+</div>
+
+<script src="https://s3.tradingview.com/tv.js"></script>
+<script>
+    const F_KEY = "{FIN_TOKEN}";
+    const G_KEY = "{GEM_TOKEN}";
+
+    function openTab(evt, tabName) {{
+        var i, content, btn;
+        content = document.getElementsByClassName("tab-content");
+        for (i = 0; i < content.length; i++) {{ content[i].style.display = "none"; }}
+        btn = document.getElementsByClassName("nav-btn");
+        for (i = 0; i < btn.length; i++) {{ btn[i].className = btn[i].className.replace(" active", ""); }}
+        document.getElementById(tabName).style.display = "block";
+        evt.currentTarget.className += " active";
+    }}
+
+    async function run1() {{
+        const s = document.getElementById('in1').value.toUpperCase();
+        const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${{s}}&token=${{F_KEY}}`);
+        const d = await r.json();
+        const score = Math.round(50 + (d.dp * 12));
+        document.getElementById('sc1').innerText = score;
+        document.getElementById('sc1').style.color = score > 55 ? '#3fb950' : '#f85149';
+        document.getElementById('adv1').innerText = score > 55 ? "BULLISH MOMENTUM" : "BEARISH / NEUTRAL";
+        new TradingView.widget({{"autosize":true, "symbol":s, "interval":"D", "theme":"dark", "container_id":"ch1", "style":"1"}});
+    }}
+
+    async function run2() {{
+        const s = document.getElementById('in2').value.toUpperCase();
+        const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${{s}}&token=${{F_KEY}}`);
+        const d = await r.json();
+        document.getElementById('out2').innerHTML = `<h3>${{s}} at $${{d.c}}</h3><p>Stop Loss: $${{(d.c*0.96).toFixed(2)}}</p><p>Target: $${{(d.c*1.08).toFixed(2)}}</p>`;
+    }}
+
+    async function run3() {{
+        const list = document.getElementById('in3').value.split(',');
+        let h = '';
+        for(let t of list) {{
+            const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${{t.trim().toUpperCase()}}&token=${{F_KEY}}`);
+            const d = await r.json();
+            h += `<tr><td>${{t.toUpperCase()}}</td><td>$${{d.c}}</td><td style="color:${{d.dp>0?'#3fb950':'#f85149'}}">${{d.dp.toFixed(2)}}%</td></tr>`;
         }}
-    </script>
-    """, height=800)
+        document.getElementById('out3').innerHTML = h;
+    }}
+
+    async function run4() {{
+        const s = document.getElementById('in4').value.toUpperCase();
+        const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${{s}}&token=${{F_KEY}}`);
+        const d = await r.json();
+        document.getElementById('out4').innerHTML = `<div class="card">SIGNAL: ${{d.dp > 0 ? 'BUY' : 'HOLD'}}</div><div class="card">MOMENTUM: ${{d.dp.toFixed(2)}}%</div>`;
+    }}
+
+    async function run5() {{
+        const s = document.getElementById('in5').value.toUpperCase();
+        const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${{s}}&token=${{F_KEY}}`);
+        const d = await r.json();
+        const c = document.createElement('div'); c.className = 'card';
+        c.innerHTML = `<b>${{s}}</b><br>$${{d.c}}<br>${{d.dp.toFixed(2)}}%`;
+        document.getElementById('out5').prepend(c);
+    }}
+
+    async function run6() {{
+        const s = document.getElementById('in6').value.toUpperCase();
+        const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${{s}}&token=${{F_KEY}}`);
+        const d = await r.json();
+        document.getElementById('sc6').innerText = Math.round(50 + (d.dp * 15));
+        document.getElementById('sym6').innerText = s + " ARCHITECT REPORT";
+        const g = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${{G_KEY}}`, {{
+            method:"POST", headers:{{"Content-Type":"application/json"}},
+            body:JSON.stringify({{contents:[{{parts:[{{text:"Analyseer "+s+" prijs actie. Geef professioneel advies in 2 zinnen."}}]}}]}})
+        }});
+        const gD = await g.json();
+        document.getElementById('ver6').innerText = gD.candidates[0].content.parts[0].text;
+    }}
+    
+    window.onload = run1;
+</script>
+</body>
+</html>
+"""
+
+components.html(full_app_html, height=1000, scrolling=False)
 
 
 
