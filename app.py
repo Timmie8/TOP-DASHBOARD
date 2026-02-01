@@ -1,14 +1,13 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import requests
 
-# --- 1. CONFIGURATIE ---
+# --- 1. SETTINGS ---
 st.set_page_config(page_title="SST MASTER TERMINAL", layout="wide")
 
 st.sidebar.header("🕹️ TERMINAL CONTROLS")
 ticker = st.sidebar.text_input("DEFAULT TICKER", "NVDA").upper()
 
-# Globale Styling voor de Tabs
+# CSS for Tab Styling
 st.markdown("""
     <style>
     .stApp { background-color: #050505; color: white; }
@@ -22,135 +21,127 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. DE TABS ---
+# --- 2. TABS ---
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "🚀 ARCHITECT AI", 
-    "📊 MARKET METERS", 
-    "🛡️ RISK SCANNER", 
-    "🔍 DEEP SCANNER", 
-    "⚡ PRO DASHBOARD",
-    "🎯 SIGNAL ANALYZER"
+    "🚀 ARCHITECT AI", "📊 MARKET METERS", "🛡️ RISK SCANNER", 
+    "🔍 DEEP SCANNER", "⚡ PRO DASHBOARD", "🎯 SIGNAL ANALYZER"
 ])
 
-# --- TAB 1: ARCHITECT AI (Snel overzicht) ---
-with tab1:
-    html_architect = f"""
-    <div style="background:#111; padding:20px; border-radius:12px; border:1px solid #333; font-family:sans-serif; color:white;">
-        <h2 style="color:#2ecc71;">SST ARCHITECT AI | {ticker}</h2>
-        <p style="color:#888;">AI Analysis: Monitoring trend structure and institutional order blocks.</p>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:20px;">
-            <div style="background:#050505; padding:15px; border-radius:8px; border:1px solid #222;">
-                <p style="font-size:12px; color:#888;">AI SENTIMENT</p>
-                <h3 style="color:#2ecc71;">BULLISH</h3>
-            </div>
-            <div style="background:#050505; padding:15px; border-radius:8px; border:1px solid #222;">
-                <p style="font-size:12px; color:#888;">CONFIDENCE</p>
-                <h3 style="color:#2ecc71;">88%</h3>
-            </div>
-        </div>
-    </div>
-    """
-    components.html(html_architect, height=250)
-
-# --- TAB 2: MARKET METERS (Technical Gauges) ---
-with tab2:
-    components.html(f"""
-        <div style="height:500px;">
-            <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
-            {{ "interval": "1D", "width": "100%", "height": "100%", "symbol": "{ticker}", "showIntervalTabs": true, "colorTheme": "dark", "locale": "en" }}
-            </script>
-        </div>
-    """, height=500)
-
-# --- TAB 3: RISK SCANNER ---
-with tab3:
-    html_risk = f"""
-    <div style="background:#050505; color:white; font-family:sans-serif; padding:20px; border:1px solid #333; border-radius:12px;">
-        <h3 style="color:#ff4d4f;">🛡️ RISK SCANNER: {ticker}</h3>
-        <div style="margin-top:20px; display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
-            <div style="padding:15px; background:#111; border-radius:8px;">
-                <p style="color:#888; font-size:12px;">VOLATILITY RISK</p>
-                <h4 style="color:#2ecc71;">LOW</h4>
-            </div>
-            <div style="padding:15px; background:#111; border-radius:8px;">
-                <p style="color:#888; font-size:12px;">STOP-LOSS DISTANCE</p>
-                <h4>3.5%</h4>
-            </div>
-        </div>
-        <p style="margin-top:20px; font-size:14px; color:#aaa;">Risk Status: Standard parameters apply. No extreme volatility detected for {ticker}.</p>
-    </div>
-    """
-    components.html(html_risk, height=350)
-
-# --- TAB 4: DEEP SCANNER (Interactive Charts) ---
-with tab4:
-    components.html(f"""
-        <div id="tv_chart" style="height:500px;"></div>
-        <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-        <script type="text/javascript">
-            new TradingView.widget({{
-                "width": "100%", "height": 500, "symbol": "{ticker}", "interval": "D",
-                "timezone": "Etc/UTC", "theme": "dark", "style": "1", "locale": "en",
-                "enable_publishing": false, "allow_symbol_change": true, "container_id": "tv_chart"
-            }});
-        </script>
-    """, height=520)
-
-# --- TAB 5: PRO DASHBOARD (Jouw werkende code) ---
+# --- TAB 5: PRO DASHBOARD (Full Logic Recovery) ---
 with tab5:
-    html_pro = f"""
-    <body style="background:#050505; color:white; font-family:sans-serif; padding:20px;">
-        <div style="background:#111; padding:15px; border-radius:8px; border:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
-            <h2>TechAnalysis PRO</h2>
-            <span style="color:#2ecc71;">● LIVE MARKET</span>
+    pro_html = f"""
+    <body style="background:#050505; color:white; font-family:sans-serif; padding:15px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; background:#111; padding:15px; border:1px solid #333; border-radius:10px;">
+            <h2 style="margin:0;">TechAnalysis PRO</h2>
+            <div id="last-update" style="font-size:12px; color:#666;"></div>
         </div>
-        <div style="margin-top:20px; display:grid; grid-template-columns: repeat(3,1fr); gap:15px;">
-            <div style="background:#111; padding:20px; border-radius:10px; border:1px solid #333;">
-                <p style="color:#888;">Target 1</p>
-                <h3 id="t1">Scanning...</h3>
+        
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:15px; margin-top:20px;">
+            <div style="background:#111; padding:15px; border:1px solid #333; border-radius:10px; text-align:center;">
+                <p style="color:#888; margin:0;">24h Change</p>
+                <h2 id="pro-change">--%</h2>
             </div>
-            <div style="background:#111; padding:20px; border-radius:10px; border:1px solid #333;">
-                <p style="color:#888;">Current Ticker</p>
-                <h3>{ticker}</h3>
+            <div style="background:#111; padding:15px; border:1px solid #333; border-radius:10px; text-align:center;">
+                <p style="color:#888; margin:0;">Target (5%)</p>
+                <h2 id="pro-target" style="color:#2ecc71;">--</h2>
             </div>
-            <div style="background:#111; padding:20px; border-radius:10px; border:1px solid #333;">
-                <p style="color:#888;">Signal Strength</p>
-                <h3 style="color:#2ecc71;">92%</h3>
+            <div style="background:#111; padding:15px; border:1px solid #333; border-radius:10px; text-align:center;">
+                <p style="color:#888; margin:0;">Stop Loss (3%)</p>
+                <h2 id="pro-stop" style="color:#ff4d4f;">--</h2>
             </div>
         </div>
+
+        <div style="margin-top:20px; background:#111; padding:20px; border-radius:10px; border-left:5px solid #2ecc71;">
+            <h3 style="margin:0;">{ticker} Signal</h3>
+            <p id="pro-price" style="font-size:24px; margin:10px 0;">Loading Price...</p>
+            <p id="pro-desc" style="color:#aaa; font-size:14px;">Calculating algorithmic trend strength...</p>
+        </div>
+
         <script>
-            async function getP() {{
-                try {{
-                    const r = await fetch(`https://api.allorigins.win/get?url=${{encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1m&range=1d')}}`);
-                    const j = await r.json();
-                    const d = JSON.parse(j.contents);
-                    const p = d.chart.result[0].indicators.quote[0].close.filter(v=>v).pop();
-                    document.getElementById('t1').innerText = "$" + (p * 1.05).toFixed(2);
-                }} catch(e) {{}}
+            async function loadPro() {{
+                const url = `https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=5d`;
+                const proxy = `https://api.allorigins.win/get?url=${{encodeURIComponent(url)}}`;
+                const r = await fetch(proxy);
+                const j = await r.json();
+                const d = JSON.parse(j.contents).chart.result[0];
+                const close = d.indicators.quote[0].close.filter(v=>v);
+                const last = close.at(-1);
+                const prev = close.at(-2);
+                const pct = ((last-prev)/prev*100).toFixed(2);
+
+                document.getElementById('pro-price').innerText = "$" + last.toFixed(2);
+                document.getElementById('pro-change').innerText = pct + "%";
+                document.getElementById('pro-target').innerText = "$" + (last * 1.05).toFixed(2);
+                document.getElementById('pro-stop').innerText = "$" + (last * 0.97).toFixed(2);
+                document.getElementById('last-update').innerText = "Last Update: " + new Date().toLocaleTimeString();
+                document.getElementById('pro-desc').innerText = pct > 0 ? "Strong bullish momentum detected. Target levels active." : "Consolidation phase. Monitor support levels.";
             }}
-            getP();
+            loadPro();
         </script>
     </body>
     """
-    components.html(html_pro, height=500)
+    components.html(pro_html, height=500)
 
-# --- TAB 6: SIGNAL ANALYZER (Jouw werkende code) ---
+# --- TAB 6: SIGNAL ANALYZER (Full Math Logic Recovery) ---
 with tab6:
-    html_analyzer = f"""
-    <body style="background:#050505; color:white; font-family:sans-serif; padding:20px;">
+    analyzer_html = f"""
+    <body style="background:#050505; color:white; font-family:sans-serif; padding:15px;">
+        <h3 style="margin-bottom:15px;">Technical Matrix: {ticker}</h3>
         <table style="width:100%; border-collapse:collapse; background:#0c0c0c; border:1px solid #333; border-radius:10px; overflow:hidden;">
-            <thead style="background:#151515; color:#888;">
-                <tr><th style="padding:15px; text-align:left;">Indicator</th><th style="padding:15px;">Status</th></tr>
+            <thead style="background:#151515; color:#888; text-align:left;">
+                <tr><th style="padding:15px;">Condition</th><th style="padding:15px; text-align:center;">Status</th></tr>
             </thead>
-            <tbody>
-                <tr style="border-bottom:1px solid #222;"><td style="padding:15px;">RSI (14)</td><td style="color:#2ecc71; text-align:center;">OVERBOUGHT (Bullish)</td></tr>
-                <tr style="border-bottom:1px solid #222;"><td style="padding:15px;">MACD Signal</td><td style="color:#2ecc71; text-align:center;">CROSSOVER UP</td></tr>
-                <tr style="border-bottom:1px solid #222;"><td style="padding:15px;">Bollinger Bands</td><td style="color:#2ecc71; text-align:center;">UPPER BAND</td></tr>
+            <tbody id="sig-body">
+                <tr><td colspan="2" style="padding:30px; text-align:center;">Running SST Technical Engine...</td></tr>
             </tbody>
         </table>
+
+        <script>
+            async function runAnalysis() {{
+                const url = `https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=1y`;
+                const proxy = `https://api.allorigins.win/get?url=${{encodeURIComponent(url)}}`;
+                const r = await fetch(proxy);
+                const j = await r.json();
+                const d = JSON.parse(j.contents).chart.result[0];
+                const q = d.indicators.quote[0];
+                const close = q.close.filter(v=>v!=null);
+                const high = q.high.filter(v=>v!=null);
+                const low = q.low.filter(v=>v!=null);
+
+                const last = close.at(-1);
+                const sma20 = close.slice(-20).reduce((a,b)=>a+b,0)/20;
+                const sma60 = close.slice(-60).reduce((a,b)=>a+b,0)/60;
+                
+                // Williams %R calculation logic
+                const hh = Math.max(...high.slice(-14));
+                const ll = Math.min(...low.slice(-14));
+                const willR = ((hh - last) / (hh - ll)) * -100;
+
+                const rows = [
+                    {{ n: "Price > SMA 20 (Short Term)", v: last > sma20 }},
+                    {{ n: "SMA 20 > SMA 60 (Trend)", v: sma20 > sma60 }},
+                    {{ n: "Williams %R > -50", v: willR > -50 }},
+                    {{ n: "Momentum (10-Day)", v: last > close.at(-11) }},
+                    {{ n: "RSI Proxy (Strength)", v: last > close.at(-14) }}
+                ];
+
+                document.getElementById('sig-body').innerHTML = rows.map(row => `
+                    <tr style="border-bottom:1px solid #222;">
+                        <td style="padding:15px;">${{row.n}}</td>
+                        <td style="padding:15px; text-align:center;">
+                            <div style="background:${{row.v ? '#123f2a' : '#4a1212'}}; color:${{row.v ? '#1dd75f' : '#ff4d4f'}}; font-weight:bold; border-radius:4px; padding:5px;">
+                                ${{row.v ? 'BULLISH' : 'BEARISH'}}
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+            }}
+            runAnalysis();
+        </script>
     </body>
     """
-    components.html(html_analyzer, height=400)
+    components.html(analyzer_html, height=550)
+
 
 
 
