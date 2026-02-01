@@ -15,7 +15,8 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- TOOL 1: SMART TERMINAL ---
+# --- TOOLS DEFINITIES (1 t/m 4) ---
+
 tool1_html = """
 <!DOCTYPE html>
 <html>
@@ -65,7 +66,6 @@ tool1_html = """
 </html>
 """
 
-# --- TOOL 2: RISK SYSTEM ---
 tool2_html = """
 <div style="background:#0d1117; color:#c9d1d9; font-family:sans-serif; padding:20px; min-height:800px;">
     <div style="max-width:800px; margin:auto;">
@@ -97,7 +97,6 @@ async function s2() {
 </script>
 """
 
-# --- TOOL 3: PRO SCANNER V5.7 ---
 tool3_html = """
 <div style="background: #0d1117; color: #e6edf3; font-family: sans-serif; padding: 20px;">
     <div style="max-width: 1000px; margin: auto; background: #0d1117; border: 1px solid #30363d; padding: 30px; border-radius: 20px;">
@@ -133,7 +132,6 @@ tool3_html = """
 </script>
 """
 
-# --- TOOL 4: DE VOLLEDIGE SIGNAL ANALYZER (JOUW CODE) ---
 tool4_html = """
 <!DOCTYPE html>
 <html lang="nl">
@@ -217,14 +215,8 @@ async function loadData() {
 
         let pos = 0, neg = 0;
         const add = (c) => c ? pos++ : neg++;
-        add(s5.at(-1) > s20.at(-1));
-        add(s20.at(-1) > s60.at(-1));
-        add(s60.at(-1) > s200.at(-1));
-        add(WILL > -50);
-        add(MOM > 0);
-        add(CCI > 0);
-        add(RSI > 50);
-        add(last > pivot);
+        add(s5.at(-1) > s20.at(-1)); add(s20.at(-1) > s60.at(-1)); add(s60.at(-1) > s200.at(-1));
+        add(WILL > -50); add(MOM > 0); add(CCI > 0); add(RSI > 50); add(last > pivot);
 
         let final = "NEUTRAL", sigCol = "#aaa";
         if (pos - neg > 2) { final = "BUY"; sigCol = "#1dd75f"; }
@@ -234,13 +226,8 @@ async function loadData() {
         tbody.innerHTML = `
             <tr style="background:#111"><td style="padding:15px"><b>${sym}</b><br>Prijs: <b>${last.toFixed(2)}</b> (${pct}%)</td>
             <td style="text-align:center"><div style="color:${sigCol};font-size:18px;font-weight:bold">${final}</div>Score: ${pos}/${neg}</td></tr>
-            ${row("SMA5 > SMA20", s5.at(-1) > s20.at(-1))}
-            ${row("SMA20 > SMA60", s20.at(-1) > s60.at(-1))}
-            ${row("RSI > 50", RSI > 50)}
-            ${row("Williams %R", WILL > -50)}
-            ${row("Momentum", MOM > 0)}
-            ${row("CCI Positive", CCI > 0)}
-            ${row("Price > Pivot", last > pivot)}
+            ${row("SMA5 > SMA20", s5.at(-1) > s20.at(-1))} ${row("SMA20 > SMA60", s20.at(-1) > s60.at(-1))}
+            ${row("RSI > 50", RSI > 50)} ${row("CCI Positive", CCI > 0)} ${row("Price > Pivot", last > pivot)}
         `;
     } catch (e) { tbody.innerHTML = "<tr><td colspan='2'>Error loading symbol</td></tr>"; }
 }
@@ -251,8 +238,20 @@ loadData();
 </html>
 """
 
+# --- NIEUW: TOOL 5: CRYPTO LIVE DASHBOARD ---
+tool5_html = """
+<div style="background:#050608; height:100vh; padding:10px;">
+    <div class="tradingview-widget-container" style="height:45%;">
+        <iframe src="https://www.tradingview.com/embed-widget/crypto-mkt-screener/?locale=en#%7B%22width%22%3A%22100%25%22%2C%22height%22%3A%22100%25%22%2C%22defaultColumn%22%3A%22overview%22%2C%22market%22%3A%22crypto%22%2C%22screener_type%22%3A%22crypto_mkt_screener%22%2C%22displayCurrency%22%3A%22USD%22%2C%22colorTheme%22%3A%22dark%22%7D" style="width: 100%; height: 100%; border:none;"></iframe>
+    </div>
+    <div class="tradingview-widget-container" style="height:50%; margin-top:10px;">
+        <iframe src="https://www.tradingview.com/embed-widget/crypto-coins-heatmap/?locale=en#%7B%22width%22%3A%22100%25%22%2C%22height%22%3A%22100%25%22%2C%22hasTopBar%22%3Atrue%2C%22isDataSetEnabled%22%3Atrue%2C%22isZoomEnabled%22%3Atrue%2C%22hasSymbolTooltip%22%3Atrue%2C%22colorTheme%22%3A%22dark%22%7D" style="width: 100%; height: 100%; border:none;"></iframe>
+    </div>
+</div>
+"""
+
 # --- TABS RENDEREN ---
-t1, t2, t3, t4 = st.tabs(["🚀 SMART TERMINAL", "🛡️ RISK & TIER", "📊 PRO SCANNER v5.7", "🔍 SIGNAL ANALYZER"])
+t1, t2, t3, t4, t5 = st.tabs(["🚀 SMART TERMINAL", "🛡️ RISK & TIER", "📊 PRO SCANNER v5.7", "🔍 SIGNAL ANALYZER", "💰 CRYPTO LIVE"])
 
 with t1:
     components.html(tool1_html, height=850, scrolling=True)
@@ -262,6 +261,9 @@ with t3:
     components.html(tool3_html, height=900, scrolling=True)
 with t4:
     components.html(tool4_html, height=900, scrolling=True)
+with t5:
+    components.html(tool5_html, height=1000, scrolling=True)
+
 
 
 
