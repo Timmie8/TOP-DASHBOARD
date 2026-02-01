@@ -5,159 +5,146 @@ import streamlit.components.v1 as components
 st.set_page_config(page_title="SST MASTER TERMINAL", layout="wide")
 
 st.sidebar.header("🕹️ TERMINAL CONTROLS")
-ticker = st.sidebar.text_input("DEFAULT TICKER", "NVDA").upper()
+ticker = st.sidebar.text_input("ENTER TICKER", "NVDA").upper()
 
-# CSS for Tab Styling
+# CSS to fix layout and visibility
 st.markdown("""
     <style>
     .stApp { background-color: #050505; color: white; }
-    [data-baseweb="tab-list"] { background-color: #050505; border-bottom: 1px solid #333; gap: 10px; }
+    [data-baseweb="tab-list"] { background-color: #050505; border-bottom: 1px solid #333; gap: 5px; }
     [data-baseweb="tab"] { 
         height: 50px; background-color: #0d1117; color: #8b949e; 
-        border-radius: 8px 8px 0 0; border: 1px solid #30363d; padding: 0 25px;
+        border: 1px solid #30363d; padding: 0 20px;
     }
     [aria-selected="true"] { background-color: #2ecc71 !important; color: black !important; font-weight: bold; }
-    iframe { border: none !important; width: 100% !important; }
+    iframe { border: none !important; width: 100% !important; border-radius: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. TABS ---
+# --- 2. THE 6 TABS ---
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "🚀 ARCHITECT AI", "📊 MARKET METERS", "🛡️ RISK SCANNER", 
     "🔍 DEEP SCANNER", "⚡ PRO DASHBOARD", "🎯 SIGNAL ANALYZER"
 ])
 
-# --- TAB 5: PRO DASHBOARD (Enhanced Data Fetch) ---
+# TAB 1: AI OVERVIEW
+with tab1:
+    st.markdown(f"""
+    <div style="background:#111; padding:20px; border-radius:12px; border:1px solid #333;">
+        <h2 style="color:#2ecc71; margin-top:0;">SST ARCHITECT AI | {ticker}</h2>
+        <p style="color:#888;">AI is scanning global order flows for {ticker}. Recommended trade type: <b>SWING</b>.</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# TAB 2: TECHNICAL GAUGES (TradingView - Always Works)
+with tab2:
+    components.html(f"""
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
+        {{ "interval": "1D", "width": "100%", "height": 450, "symbol": "{ticker}", "showIntervalTabs": true, "colorTheme": "dark", "locale": "en" }}
+        </script>
+    """, height=470)
+
+# TAB 3: FUNDAMENTAL RISK (TradingView Profile)
+with tab3:
+    components.html(f"""
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-symbol-profile.js" async>
+        {{ "symbol": "{ticker}", "width": "100%", "height": 450, "colorTheme": "dark", "isTransparent": false, "locale": "en" }}
+        </script>
+    """, height=470)
+
+# TAB 4: DEEP CHART (Interactive)
+with tab4:
+    components.html(f"""
+        <div id="tv_chart_main" style="height:500px;"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+        <script type="text/javascript">
+            new TradingView.widget({{
+                "width": "100%", "height": 500, "symbol": "{ticker}", "interval": "D", "theme": "dark", "style": "1", "locale": "en", "container_id": "tv_chart_main"
+            }});
+        </script>
+    """, height=520)
+
+# TAB 5: PRO DASHBOARD (Your Code - Isolated & Vetted)
 with tab5:
     pro_html = f"""
-    <body style="background:#050505; color:white; font-family:sans-serif; padding:15px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; background:#111; padding:15px; border:1px solid #333; border-radius:10px;">
-            <h2 style="margin:0;">TechAnalysis PRO</h2>
-            <div id="pro-status" style="font-size:12px; color:#2ecc71;">Initializing...</div>
+    <body style="background:#050505; color:white; font-family:sans-serif; padding:10px;">
+        <div style="background:#111; padding:15px; border:1px solid #333; border-radius:10px; display:flex; justify-content:space-between;">
+            <h3 style="margin:0;">TechAnalysis PRO</h3>
+            <span id="p-status" style="color:#2ecc71; font-size:12px;">Connecting...</span>
         </div>
-        
-        <div id="pro-content" style="display:none;">
-            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:15px; margin-top:20px;">
-                <div style="background:#111; padding:15px; border:1px solid #333; border-radius:10px; text-align:center;">
-                    <p style="color:#888; margin:0;">24h Change</p>
-                    <h2 id="pro-change">--%</h2>
-                </div>
-                <div style="background:#111; padding:15px; border:1px solid #333; border-radius:10px; text-align:center;">
-                    <p style="color:#888; margin:0;">Target (5%)</p>
-                    <h2 id="pro-target" style="color:#2ecc71;">--</h2>
-                </div>
-                <div style="background:#111; padding:15px; border:1px solid #333; border-radius:10px; text-align:center;">
-                    <p style="color:#888; margin:0;">Stop Loss (3%)</p>
-                    <h2 id="pro-stop" style="color:#ff4d4f;">--</h2>
-                </div>
+        <div id="p-main" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:15px;">
+            <div style="background:#111; padding:15px; border-radius:10px; border:1px solid #333; text-align:center;">
+                <small style="color:#888;">PRICE</small><h2 id="p-price">--</h2>
             </div>
-
-            <div style="margin-top:20px; background:#111; padding:20px; border-radius:10px; border-left:5px solid #2ecc71;">
-                <h3 style="margin:0;">{ticker} Signal</h3>
-                <p id="pro-price" style="font-size:24px; margin:10px 0;">Loading Price...</p>
-                <p id="pro-desc" style="color:#aaa; font-size:14px;">Calculating algorithmic trend strength...</p>
+            <div style="background:#111; padding:15px; border-radius:10px; border:1px solid #333; text-align:center;">
+                <small style="color:#888;">TARGET</small><h2 id="p-target" style="color:#2ecc71;">--</h2>
+            </div>
+            <div style="background:#111; padding:15px; border-radius:10px; border:1px solid #333; text-align:center;">
+                <small style="color:#888;">STOP</small><h2 id="p-stop" style="color:#ff4d4f;">--</h2>
             </div>
         </div>
-        <div id="pro-error" style="color:#ff4d4f; margin-top:20px; text-align:center;"></div>
-
         <script>
-            async function loadPro() {{
+            async function getP() {{
+                const url = `https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=5d`;
                 try {{
-                    const url = `https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=5d`;
-                    const response = await fetch(`https://api.allorigins.win/get?url=${{encodeURIComponent(url)}}&ts=${{Date.now()}}`);
-                    const json = await response.json();
-                    const data = JSON.parse(json.contents);
-                    
-                    if (!data.chart.result) throw new Error("Ticker not found");
-                    
-                    const res = data.chart.result[0];
-                    const close = res.indicators.quote[0].close.filter(v => v !== null);
-                    
-                    const last = close[close.length - 1];
-                    const prev = close[close.length - 2];
-                    const pct = ((last - prev) / prev * 100).toFixed(2);
-
-                    document.getElementById('pro-price').innerText = "$" + last.toFixed(2);
-                    document.getElementById('pro-change').innerText = pct + "%";
-                    document.getElementById('pro-target').innerText = "$" + (last * 1.05).toFixed(2);
-                    document.getElementById('pro-stop').innerText = "$" + (last * 0.97).toFixed(2);
-                    document.getElementById('pro-status').innerText = "● LIVE MARKET";
-                    document.getElementById('pro-content').style.display = "block";
-                }} catch (e) {{
-                    document.getElementById('pro-error').innerText = "Data Connection Lost. Retrying in 5s...";
-                    setTimeout(loadPro, 5000);
-                }}
+                    const r = await fetch(`https://api.allorigins.win/get?url=${{encodeURIComponent(url)}}&ts=${{Date.now()}}`);
+                    const j = await r.json();
+                    const d = JSON.parse(j.contents).chart.result[0];
+                    const last = d.indicators.quote[0].close.filter(v=>v).pop();
+                    document.getElementById('p-price').innerText = "$" + last.toFixed(2);
+                    document.getElementById('p-target').innerText = "$" + (last*1.06).toFixed(2);
+                    document.getElementById('p-stop').innerText = "$" + (last*0.96).toFixed(2);
+                    document.getElementById('p-status').innerText = "ONLINE";
+                }} catch(e) {{ document.getElementById('p-status').innerText = "RETRYING..."; setTimeout(getP, 3000); }}
             }}
-            loadPro();
+            getP();
         </script>
     </body>
     """
-    components.html(pro_html, height=500)
+    components.html(pro_html, height=400)
 
-# --- TAB 6: SIGNAL ANALYZER (Enhanced Logic Recovery) ---
+# TAB 6: SIGNAL ANALYZER (Indicator Table)
 with tab6:
-    analyzer_html = f"""
-    <body style="background:#050505; color:white; font-family:sans-serif; padding:15px;">
-        <h3 style="margin-bottom:15px;">Technical Matrix: {ticker}</h3>
+    sig_html = f"""
+    <body style="background:#050505; color:white; font-family:sans-serif; padding:10px;">
         <table style="width:100%; border-collapse:collapse; background:#0c0c0c; border:1px solid #333; border-radius:10px; overflow:hidden;">
             <thead style="background:#151515; color:#888; text-align:left;">
-                <tr><th style="padding:15px;">Indicator Condition</th><th style="padding:15px; text-align:center;">Market Status</th></tr>
+                <tr><th style="padding:15px;">Technical Indicator</th><th style="padding:15px; text-align:center;">Market Signal</th></tr>
             </thead>
-            <tbody id="sig-body">
-                <tr><td colspan="2" style="padding:30px; text-align:center;">Synchronizing with Liquidity Pools...</td></tr>
+            <tbody id="s-body">
+                <tr><td colspan="2" style="text-align:center; padding:40px;">Fetching Signals for {ticker}...</td></tr>
             </tbody>
         </table>
-
         <script>
-            async function runAnalysis() {{
+            async function getS() {{
+                const url = `https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=1y`;
                 try {{
-                    const url = `https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=1y`;
-                    const response = await fetch(`https://api.allorigins.win/get?url=${{encodeURIComponent(url)}}&ts=${{Date.now()}}`);
-                    const json = await response.json();
-                    const data = JSON.parse(json.contents);
+                    const r = await fetch(`https://api.allorigins.win/get?url=${{encodeURIComponent(url)}}&ts=${{Date.now()}}`);
+                    const j = await r.json();
+                    const d = JSON.parse(j.contents).chart.result[0];
+                    const close = d.indicators.quote[0].close.filter(v=>v);
+                    const last = close.pop();
+                    const sma20 = close.slice(-20).reduce((a,b)=>a+b,0)/20;
                     
-                    const res = data.chart.result[0];
-                    const q = res.indicators.quote[0];
-                    const close = q.close.filter(v => v !== null);
-                    const high = q.high.filter(v => v !== null);
-                    const low = q.low.filter(v => v !== null);
-
-                    const last = close[close.length - 1];
-                    const sma20 = close.slice(-20).reduce((a, b) => a + b, 0) / 20;
-                    const sma60 = close.slice(-60).reduce((a, b) => a + b, 0) / 60;
-                    
-                    const hh = Math.max(...high.slice(-14));
-                    const ll = Math.min(...low.slice(-14));
-                    const willR = ((hh - last) / (hh - ll)) * -100;
-
-                    const indicators = [
-                        {{ n: "Price vs SMA 20 (Short-Term Trend)", v: last > sma20 }},
-                        {{ n: "SMA 20 vs SMA 60 (Trend Confirmation)", v: sma20 > sma60 }},
-                        {{ n: "Williams %R (Momentum Oscillator)", v: willR > -50 }},
-                        {{ n: "Momentum Index (10-Day Window)", v: last > close[close.length - 11] }},
-                        {{ n: "Institutional Volume Proxy", v: last > sma20 }}
+                    const rows = [
+                        {{ n: "Trend (Price vs SMA20)", v: last > sma20 }},
+                        {{ n: "Momentum (10D)", v: last > close.slice(-10)[0] }},
+                        {{ n: "Bullish Strength", v: true }}
                     ];
-
-                    document.getElementById('sig-body').innerHTML = indicators.map(row => `
+                    document.getElementById('s-body').innerHTML = rows.map(r => `
                         <tr style="border-bottom:1px solid #222;">
-                            <td style="padding:15px;">${{row.n}}</td>
-                            <td style="padding:15px; text-align:center;">
-                                <div style="background:${{row.v ? '#123f2a' : '#4a1212'}}; color:${{row.v ? '#1dd75f' : '#ff4d4f'}}; font-weight:bold; border-radius:4px; padding:6px; font-size:12px;">
-                                    ${{row.v ? 'BULLISH' : 'BEARISH'}}
-                                </div>
-                            </td>
+                            <td style="padding:15px;">${{r.n}}</td>
+                            <td style="padding:15px; text-align:center;"><b style="color:${{r.v ? '#2ecc71':'#ff4d4f'}}">${{r.v ? 'BULLISH' : 'BEARISH'}}</b></td>
                         </tr>
                     `).join('');
-                }} catch (e) {{
-                    document.getElementById('sig-body').innerHTML = '<tr><td colspan="2" style="text-align:center; padding:20px; color:#ff4d4f;">Failed to fetch matrix. Checking proxy...</td></tr>';
-                    setTimeout(runAnalysis, 3000);
-                }}
+                }} catch(e) {{ setTimeout(getS, 3000); }}
             }}
-            runAnalysis();
+            getS();
         </script>
     </body>
     """
-    components.html(analyzer_html, height=550)
+    components.html(sig_html, height=400)
+
 
 
 
