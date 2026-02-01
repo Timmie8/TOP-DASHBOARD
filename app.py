@@ -2,7 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # 1. Pagina instellingen
-st.set_page_config(page_title="SST AI TRADING SUITE v6.3", layout="wide")
+st.set_page_config(page_title="SST AI TRADING SUITE v6.4", layout="wide")
 
 # Globale Styling voor de interface
 st.markdown("""
@@ -72,12 +72,12 @@ async function calcRisk() {
 </script>
 """
 
-# --- TOOL 3: PRO SCANNER v5.7 ---
+# --- TOOL 3: PRO SCANNER ---
 tool3_html = """
 <div style="background: #0d1117; color: white; font-family: sans-serif; padding: 20px;">
     <div style="max-width: 1000px; margin: auto;">
         <h3>Batch AI Scanner</h3>
-        <textarea id="t3List" style="width: 100%; height: 80px; background: #010409; color: #3fb950; border: 1px solid #30363d; padding: 10px; font-family: monospace;">AAPL, NVDA, TSLA, AMD, MSFT, META</textarea>
+        <textarea id="t3List" style="width: 100%; height: 80px; background: #010409; color: #3fb950; border: 1px solid #30363d; padding: 10px; font-family: monospace;">AAPL, NVDA, TSLA, AMD</textarea>
         <button onclick="scanT3()" style="width: 100%; padding: 15px; background: #238636; color: white; border:none; margin-top:10px; cursor:pointer; font-weight:bold;">START MULTI-SCAN</button>
         <table style="width:100%; margin-top:20px; border-collapse: collapse;">
             <thead><tr style="border-bottom: 2px solid #30363d; color: #8b949e; text-align: left;"><th>SYMBOL</th><th>CHANGE</th><th>AI SCORE</th></tr></thead>
@@ -120,21 +120,20 @@ async function loadT4() {
     const sma = close.slice(-20).reduce((a,b)=>a+b)/20;
     document.getElementById('t4Res').innerHTML = `
         <div style="background:#111; padding:20px; border-radius:10px; border:1px solid #222;">
-            <h2 style="margin:0;">${s} Analysis</h2>
-            <hr style="border:0; border-top:1px solid #333; margin:15px 0;">
+            <h2 style="margin:0;">${s} Analysis</h2><hr style="border:0; border-top:1px solid #333; margin:15px 0;">
             <p>SMA(20): ${sma.toFixed(2)} | Status: <b style="color:${last>sma?'#3fb950':'#f85149'}">${last>sma?'BULLISH':'BEARISH'}</b></p>
         </div>`;
 }
 </script>
 """
 
-# --- TOOL 5: TECHANALYSIS PRO (VOLLEDIG HERSTELD) ---
+# --- TOOL 5: TECHANALYSIS PRO ---
 tool5_html = """
 <div style="background: #050608; color: white; padding: 25px; font-family: sans-serif; min-height: 800px;">
     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 20px; margin-bottom: 25px;">
         <div>
             <h2 style="margin: 0; color: #fff;">TechAnalysis <span style="color: #2f81f7;">PRO</span></h2>
-            <p style="margin: 5px 0 0; color: #8b949e; font-size: 0.8rem;">Live Portfolio Monitoring</p>
+            <p style="margin: 5px 0 0; color: #8b949e; font-size: 0.8rem;">Live Monitoring</p>
         </div>
         <div style="display: flex; gap: 10px;">
             <input id="t5Input" type="text" placeholder="TICKER" style="background: #0d1117; border: 1px solid #30363d; color: white; padding: 10px; border-radius: 8px; width: 120px; outline: none;">
@@ -142,7 +141,7 @@ tool5_html = """
         </div>
     </div>
     <div id="t5Grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;"></div>
-    <div id="t5Empty" style="text-align: center; padding: 100px; color: #8b949e; border: 2px dashed #30363d; border-radius: 20px; margin-top: 20px;">Voeg een ticker toe om te beginnen.</div>
+    <div id="t5Empty" style="text-align: center; padding: 100px; color: #8b949e; border: 2px dashed #30363d; border-radius: 20px; margin-top: 20px;">Voeg tickers toe.</div>
 </div>
 <script>
     async function addTicker5() {
@@ -154,12 +153,9 @@ tool5_html = """
         const card = document.createElement('div');
         card.style = "background:#161b22; border:1px solid #30363d; padding:20px; border-radius:15px; position:relative;";
         card.innerHTML = `
-            <div style="display:flex; justify-content:space-between;">
-                <b>${t}</b> <span style="color:${d.dp>0?'#3fb950':'#f85149'}">${d.dp.toFixed(2)}%</span>
-            </div>
+            <div style="display:flex; justify-content:space-between;"><b>${t}</b> <span style="color:${d.dp>0?'#3fb950':'#f85149'}">${d.dp.toFixed(2)}%</span></div>
             <div style="font-size:1.5rem; margin:10px 0;">$${d.c.toFixed(2)}</div>
-            <div style="font-size:0.7rem; color:#8b949e;">H: ${d.h} | L: ${d.l}</div>
-            <button onclick="this.parentElement.remove()" style="position:absolute; top:5px; right:5px; background:none; border:none; color:#f85149; cursor:pointer;">&times;</button>
+            <button onclick="this.parentElement.remove()" style="position:absolute; top:5px; right:5px; background:none; border:none; color:#f85149; cursor:pointer; font-size:1.2rem;">&times;</button>
         `;
         document.getElementById('t5Grid').prepend(card);
         document.getElementById('t5Input').value = '';
@@ -167,7 +163,7 @@ tool5_html = """
 </script>
 """
 
-# --- TOOL 6: SST ARCHITECT ---
+# --- TOOL 6: SST ARCHITECT (THE FIXED VERSION) ---
 tool6_html = """
 <div id="sst-terminal-final" style="font-family: 'Inter', sans-serif; color: #e6edf3; max-width: 1200px; margin: 0 auto; background: #0d1117; padding: 30px; border-radius: 20px; border: 1px solid #30363d;">
     <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 30px; margin-bottom: 20px;">
@@ -178,10 +174,10 @@ tool6_html = """
         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
             <input id="tickerInput6" type="text" placeholder="TICKER" style="background: #010409; border: 1px solid #2f81f7; color: #fff; padding: 15px; border-radius: 12px; font-weight: 800; width: 130px; outline: none;">
             <button onclick="runUltimateAnalysis()" style="background: #238636; color: #fff; border: none; padding: 15px 30px; border-radius: 12px; font-weight: 900; cursor: pointer;">RUN DEEP SCAN</button>
-            <button onclick="addToWatchlist()" style="background: transparent; color: #8b949e; border: 1px solid #30363d; padding: 15px; border-radius: 12px; font-weight: 800; cursor: pointer;">+ WATCH</button>
+            <button onclick="addToWatchlist6()" style="background: transparent; color: #8b949e; border: 1px solid #30363d; padding: 15px; border-radius: 12px; font-weight: 800; cursor: pointer;">+ WATCH</button>
         </div>
     </div>
-    <div id="watchlistBar" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px;"></div>
+    <div id="watchlistBar6" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px;"></div>
     <div id="scannerDashboard" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px;">
         <div id="totalScoreCard" style="background: #161b22; padding: 30px; border-radius: 18px; border: 2px solid #30363d; text-align: center;">
             <span style="font-size: 0.7rem; font-weight: 800; color: #8b949e; text-transform: uppercase;">Aggregate AI Score</span>
@@ -197,22 +193,22 @@ tool6_html = """
         </div>
         <div style="background: #1c2128; padding: 30px; border-radius: 18px; border: 1px solid #444;">
             <h3 style="margin: 0 0 20px 0; font-size: 1rem; color: #fff;">AI SETUP</h3>
-            <div id="targetPrice6" style="font-size: 1.8rem; font-weight: 900; color: #3fb950;">$0.00</div>
-            <div id="supportPrice6" style="font-size: 1.4rem; font-weight: 900; color: #f85149;">$0.00</div>
+            <div id="targetPrice6" style="font-size: 1.4rem; font-weight: 900; color: #3fb950; margin-bottom:10px;">Target: --</div>
+            <div id="supportPrice6" style="font-size: 1.4rem; font-weight: 900; color: #f85149;">Stop: --</div>
         </div>
         <div style="background: #161b22; padding: 30px; border-radius: 18px; border: 1px solid #30363d;">
             <h3 id="resSymbol6" style="margin: 0; font-size: 2rem; font-weight: 900; color: #fff;">---</h3>
-            <p id="verdictDetail6" style="font-size: 0.85rem; color: #c9d1d9; line-height: 1.5; margin-top: 15px; border-top: 1px solid #30363d; padding-top: 10px;">Voer ticker in...</p>
+            <p id="verdictDetail6" style="font-size: 0.85rem; color: #c9d1d9; line-height: 1.5; margin-top: 15px;">Wachtend op input...</p>
         </div>
     </div>
 </div>
 <script>
     const FIN_KEY = "d5h3vm9r01qll3dlm2sgd5h3vm9r01qll3dlm2t0";
     const GEM_KEY = "AIzaSyDTDyQWKgCJ3tvcexRCYYvuRUfkTpN4J5w";
-    let watchlist6 = JSON.parse(localStorage.getItem('sst_arch_wl')) || ['NVDA', 'AAPL'];
+    let watchlist6 = JSON.parse(localStorage.getItem('sst_arch_wl_v6')) || ['NVDA', 'AAPL'];
 
     function renderWatchlist6() {
-        const bar = document.getElementById('watchlistBar'); bar.innerHTML = '';
+        const bar = document.getElementById('watchlistBar6'); bar.innerHTML = '';
         watchlist6.forEach(t => {
             const el = document.createElement('div');
             el.style = "background:#21262d; border:1px solid #30363d; padding:8px 12px; border-radius:8px; color:white; font-weight:700; display:flex; gap:10px; cursor:pointer;";
@@ -221,44 +217,58 @@ tool6_html = """
         });
     }
 
-    function addToWatchlist() {
+    function addToWatchlist6() {
         const t = document.getElementById('tickerInput6').value.toUpperCase();
-        if(t && !watchlist6.includes(t)) { watchlist6.push(t); localStorage.setItem('sst_arch_wl', JSON.stringify(watchlist6)); renderWatchlist6(); }
+        if(t && !watchlist6.includes(t)) { watchlist6.push(t); localStorage.setItem('sst_arch_wl_v6', JSON.stringify(watchlist6)); renderWatchlist6(); }
     }
 
     function removeFromWatchlist6(t) {
-        watchlist6 = watchlist6.filter(item => item !== t); localStorage.setItem('sst_arch_wl', JSON.stringify(watchlist6)); renderWatchlist6();
+        watchlist6 = watchlist6.filter(item => item !== t); localStorage.setItem('sst_arch_wl_v6', JSON.stringify(watchlist6)); renderWatchlist6();
     }
 
     async function runUltimateAnalysis() {
         const ticker = document.getElementById('tickerInput6').value.toUpperCase();
         if(!ticker) return;
+        
+        document.getElementById('totalScore').innerText = "??";
+        document.getElementById('verdictDetail6').innerText = "Data ophalen...";
+
         try {
             const qR = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FIN_KEY}`);
             const q = await qR.json();
-            const score = Math.min(Math.max(Math.round(50 + (q.dp * 8)), 10), 98);
             
+            if(!q.c || q.c === 0) {
+                document.getElementById('verdictDetail6').innerText = "Fout: Ticker niet gevonden.";
+                return;
+            }
+
+            const score = Math.min(Math.max(Math.round(50 + (q.dp * 10)), 10), 98);
             document.getElementById('totalScore').innerText = score;
             document.getElementById('resSymbol6').innerText = ticker;
             document.getElementById('targetPrice6').innerText = "Target: $" + (q.c * 1.07).toFixed(2);
             document.getElementById('supportPrice6').innerText = "Stop: $" + (q.c * 0.96).toFixed(2);
 
             const riskVal = (100 - score);
-            document.getElementById('riskBar6').style.width = riskVal + "%";
-            document.getElementById('riskBar6').style.background = riskVal > 60 ? "#f85149" : "#238636";
+            const rBar = document.getElementById('riskBar6');
+            rBar.style.width = riskVal + "%";
+            rBar.style.background = riskVal > 60 ? "#f85149" : (riskVal > 35 ? "#d29922" : "#238636");
             document.getElementById('riskLabel6').innerText = "RISK: " + (riskVal > 60 ? "HIGH" : "LOW");
 
-            document.getElementById('timingBar6').style.width = score + "%";
-            document.getElementById('timingBar6').style.background = score > 65 ? "#238636" : "#d29922";
+            const tBar = document.getElementById('timingBar6');
+            tBar.style.width = score + "%";
+            tBar.style.background = score > 65 ? "#238636" : (score > 35 ? "#d29922" : "#f85149");
             document.getElementById('timingLabel6').innerText = "TIMING: " + (score > 65 ? "OPTIMAL" : "WAIT");
 
+            const prompt = `Geef kort trading advies voor ${ticker} in het Nederlands. Prijs is ${q.c}.`;
             const gemRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEM_KEY}`, {
                 method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ contents: [{ parts: [{ text: `Geef zeer kort trading advies voor ${ticker} in het Nederlands.` }] }] })
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
             });
             const gemData = await gemRes.json();
             document.getElementById('verdictDetail6').innerText = gemData.candidates[0].content.parts[0].text;
-        } catch(e) {}
+        } catch(e) {
+            document.getElementById('totalScore').innerText = "ERR";
+        }
     }
     renderWatchlist6();
 </script>
