@@ -133,7 +133,7 @@ tool3_html = """
 </script>
 """
 
-# --- TOOL 4: SIGNAL ANALYZER ---
+# --- TOOL 4: SIGNAL ANALYZER (VOLLEDIGE HERSTELDE VERSIE) ---
 tool4_html = """
 <!DOCTYPE html>
 <html lang="nl">
@@ -182,82 +182,124 @@ async function loadData() {
         const data = JSON.parse(wrapper.contents);
         const res = data.chart.result[0];
         const q = res.indicators.quote[0];
-        const close = q.close.filter(v => v !== null);
-        const last = close.at(-1);
-        const date = new Date(res.timestamp.at(-1) * 1000).toLocaleString();
         
+        const close = q.close.filter(v => v !== null);
+        const high = q.high.filter(v => v !== null);
+        const low = q.low.filter(v => v !== null);
+        const last = close.at(-1);
+        const prev = close.at(-2);
+        const pct = ((last - prev) / prev * 100).toFixed(2);
+        const date = new Date(res.timestamp.at(-1) * 1000).toLocaleString();
+
         const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
-        const SMA20 = avg(close.slice(-20));
-        const cond = last > SMA20;
+        const std = a => Math.sqrt(avg(a.map(x => (x - avg(a)) ** 2)));
+        const SMA = (p) => close.map((_, i) => i < p ? null : avg(close.slice(i - p, i))).filter(v => v !== null);
+        
+        const s5 = SMA(5), s20 = SMA(20), s60 = SMA(60), s200 = SMA(200);
+        
+        function calcRSI(d, p) {
+            let r = [];
+            for (let i = p; i < d.length; i++) {
+                let g = 0, l = 0;
+                for (let j = i - p + 1; j <= i; j++) {
+                    const x = d[j] - d[j - 1];
+                    x > 0 ? g += x : l -= x;
+                }
+                r.push(100 - (100 / (1 + g / (l || 1))));
+            }
+            return r;
+        }
+
+        const RSI = calcRSI(close, 14).at(-1);
+        const MOM = close.at(-1) - close.at(-11);
+        const CCI = (last - avg(close.slice(-20))) / (0.015 * std(close.slice(-20)));
+        const WILL = -100 * (Math.max(...high.slice(-14)) - last) / (Math.max(...high.slice(-14)) - Math.min(...low.slice(-14)));
+        const pivot = (high.at(-2) + low.at(-2) + close.at(-2)) / 3;
+
+        let pos = 0, neg = 0;
+        const add = (c) => c ? pos++ : neg++;
+        add(s5.at(-1) > s20.at(-1));
+        add(s20.at(-1) > s60.at(-1));
+        add(RSI > 50);
+        add(WILL > -50);
+        add(MOM > 0);
+        add(CCI > 0);
+        add(last > pivot);
+
+        let final = "NEUTRAL", sigCol = "#aaa";
+        if (pos - neg > 2) { final = "BUY"; sigCol = "#1dd75f"; }
+        if (neg - pos > 2) { final = "SELL"; sigCol = "#ff4d4f"; }
 
         document.getElementById("update-time").innerText = `Update: ${date}`;
         tbody.innerHTML = `
-            <tr style="background:#111"><td><b>${sym}</b> Price</td><td style="text-align:center">${last.toFixed(2)}</td></tr>
-            <tr><td>SMA 20 Analysis</td><td class="${cond ? 'bullish' : 'bearish'}">${cond ? 'Bullish' : 'Bearish'}</td></tr>
+            <tr style="background:#111"><td style="padding:15px"><b>${sym}</b><br>Prijs: <b>${last.toFixed(2)}</b> (${pct}%)</td>
+            <td style="text-align:center"><div style="color:${sigCol};font-size:18px;font-weight:bold">${final}</div>Score: ${pos}/${neg}</td></tr>
+            ${row("SMA5 > SMA20", s5.at(-1) > s20.at(-1))}
+            ${row("SMA20 > SMA60", s20.at(-1) > s60.at(-1))}
+            ${row("RSI (14) > 50", RSI > 50)}
+            ${row("Williams %R > -50", WILL > -50)}
+            ${row("Momentum > 0", MOM > 0)}
+            ${row("CCI > 0", CCI > 0)}
+            ${row("Price > Pivot Point", last > pivot)}
         `;
-    } catch (e) { tbody.innerHTML = "<tr><td>Error</td></tr>"; }
+    } catch (e) { tbody.innerHTML = "<tr><td colspan='2'>Error loading data</td></tr>"; }
 }
+function row(name, cond) { return `<tr><td>${name}</td><td class="${cond ? 'bullish' : 'bearish'}">${cond ? 'Bullish' : 'Bearish'}</td></tr>`; }
 loadData();
 </script>
 </body>
 </html>
 """
 
-# --- TOOL 5: TECHANALYSIS PRO (JOUW CODE) ---
+# --- TOOL 5: TECHANALYSIS PRO ---
 tool5_html = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <audio id="alert-sound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
     body { background: #050608; color: #f9fafb; padding: 24px; }
-    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; background: #111; padding: 16px; border-radius: 8px; border: 1px solid #333; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: #111; padding: 16px; border-radius: 8px; border: 1px solid #333; }
     header h1 { color: #fff; font-size: 24px; }
-    .subtitle { color: #6b7280; margin: 16px 0 24px; }
+    .subtitle { color: #8b949e; margin-bottom: 24px; }
     .action-bar { display: flex; gap: 16px; margin-bottom: 24px; }
-    .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 500; }
+    .btn { padding: 10px 20px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
     .btn-primary { background: #2563eb; color: white; }
     .btn-success { background: #16a34a; color: white; }
     .btn-danger { background: #dc2626; color: white; }
     .kpi-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 24px; }
-    .card { background: #111; padding: 16px 20px; border-radius: 10px; border: 1px solid #333; }
-    .kpi-value { font-size: 24px; font-weight: bold; margin-top: 5px; color: #2f81f7; }
+    .card { background: #111; padding: 20px; border-radius: 10px; border: 1px solid #333; }
+    .kpi-value { font-size: 24px; font-weight: bold; color: #2f81f7; }
     .stock-list { display: flex; flex-direction: column; gap: 16px; }
-    .stock-card { border-left: 5px solid #3b82f6; }
-    .alert-input { padding: 6px; border-radius: 6px; border: 1px solid #333; background: #000; color: white; margin-right: 5px; }
-    #popup { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 9999; }
-    #popup-box { background: #111; padding: 20px; border-radius: 10px; width: 340px; border: 1px solid #333; display: flex; flex-direction: column; gap: 16px; }
+    #popup { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 999; }
+    #popup-box { background: #111; padding: 25px; border-radius: 10px; border: 1px solid #333; width: 340px; display: flex; flex-direction: column; gap: 15px; }
   </style>
 </head>
 <body>
-  <div class="page">
-    <header><h1>TechAnalysis PRO</h1></header>
-    <p class="subtitle">Swing Trading Signals • 1–5 Days</p>
-    <div class="action-bar">
-      <button class="btn btn-primary" onclick="openPopup()">New Analysis</button>
-      <button class="btn btn-success" onclick="manualRefresh()">Refresh Now</button>
-    </div>
-    <div class="kpi-grid">
-      <div class="card"><p>Buy Signals</p><p id="kpi-buys" class="kpi-value">0</p></div>
-      <div class="card"><p>Active</p><p id="kpi-count" class="kpi-value">0</p></div>
-      <div class="card"><p>Status</p><p class="kpi-value">LIVE</p></div>
-    </div>
-    <div id="stock-list" class="stock-list"></div>
+  <header><h1>TechAnalysis PRO</h1></header>
+  <div class="action-bar">
+    <button class="btn btn-primary" onclick="openPopup()">+ New Analysis</button>
+    <button class="btn btn-success" onclick="manualRefresh()">Refresh Now</button>
   </div>
+  <div class="kpi-grid">
+    <div class="card"><p>Buy Signals</p><p id="kpi-buys" class="kpi-value">0</p></div>
+    <div class="card"><p>Active</p><p id="kpi-count" class="kpi-value">0</p></div>
+    <div class="card"><p>Status</p><p class="kpi-value" style="color:#16a34a">LIVE</p></div>
+  </div>
+  <div id="stock-list" class="stock-list"></div>
 
   <div id="popup"><div id="popup-box">
-    <h3>New Analysis</h3>
-    <input id="ticker-input" class="alert-input" placeholder="e.g. AAPL">
+    <h3>New Ticker</h3>
+    <input id="ticker-input" style="padding:10px; background:#000; color:white; border:1px solid #333;" placeholder="e.g. AAPL">
     <button class="btn btn-primary" onclick="addTicker()">Add</button>
-    <button class="btn" style="background:#333; color:white" onclick="closePopup()">Cancel</button>
+    <button class="btn" style="background:#333;color:white" onclick="closePopup()">Cancel</button>
   </div></div>
 
   <script>
     async function fetchWithProxy(url) {
-      const r = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
-      const j = await r.json(); return JSON.parse(j.contents);
+      const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+      const json = await res.json(); return JSON.parse(json.contents);
     }
     function openPopup(){ document.getElementById("popup").style.display="flex"; }
     function closePopup(){ document.getElementById("popup").style.display="none"; }
@@ -272,20 +314,20 @@ tool5_html = """
         card.querySelector(".price").textContent = "$" + last.toFixed(2);
         const signal = last > (close.reduce((a,b)=>a+b)/close.length) ? "BUY" : "SELL";
         card.querySelector(".signal").textContent = signal;
-        card.style.borderLeftColor = signal === "BUY" ? "#16a34a" : "#dc2626";
+        card.style.borderLeft = `5px solid ${signal === 'BUY' ? '#16a34a' : '#dc2626'}`;
       } catch(e) {}
       updateKPI();
     }
 
     function addTicker() {
-      const t = document.getElementById("ticker-input").value.toUpperCase();
-      if(!t) return;
+      const val = document.getElementById("ticker-input").value.toUpperCase();
+      if(!val) return;
       const el = document.createElement("div");
-      el.className = "card stock-card"; el.dataset.ticker = t;
-      el.innerHTML = `<b>${t}</b> | Price: <span class="price">...</span> | Signal: <b class="signal">...</b><br>
-      <button class="btn btn-danger" style="margin-top:10px" onclick="this.parentElement.remove(); updateKPI();">Remove</button>`;
+      el.className = "card stock-card"; el.dataset.ticker = val;
+      el.innerHTML = `<b>${val}</b> | Price: <span class="price">...</span> | Signal: <b class="signal">...</b><br>
+      <button class="btn btn-danger" style="margin-top:10px; padding:5px 10px;" onclick="this.parentElement.remove(); updateKPI();">Remove</button>`;
       document.getElementById("stock-list").appendChild(el);
-      closePopup(); updateCard(t);
+      closePopup(); updateCard(val);
     }
 
     function updateKPI() {
