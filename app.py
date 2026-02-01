@@ -4,28 +4,24 @@ import streamlit.components.v1 as components
 # 1. Pagina instellingen
 st.set_page_config(page_title="SST AI TRADER", layout="wide")
 
-# Verberg Streamlit balken en zorg voor een donkere achtergrond
+# Verberg Streamlit decoratie
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     .block-container { padding: 0px; background-color: #050608; }
-    /* Styling voor de Tabs zelf */
     .stTabs [data-baseweb="tab-list"] { background-color: #0d1117; border-bottom: 1px solid #30363d; gap: 10px; }
     .stTabs [data-baseweb="tab"] { color: #8b949e; font-weight: bold; }
     .stTabs [aria-selected="true"] { color: #2ecc71 !important; border-bottom-color: #2ecc71 !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- DE TOOLS DEFINIËREN ---
-
-# JOUW CODE 1: AI SMART TERMINAL (BLAUW)
+# --- TOOL 1: AI SMART TERMINAL ---
 tool_smart_terminal = """
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #050608; color: white; font-family: sans-serif; padding: 20px; }
@@ -40,7 +36,7 @@ tool_smart_terminal = """
 <body>
     <div style="max-width: 600px; margin: auto;">
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <input id="tickerInput" type="text" value="NVDA" placeholder="TICKER">
+            <input id="tickerInput" type="text" value="NVDA">
             <button onclick="fetchAIData()">SCAN</button>
         </div>
         <div id="signalCard" style="background: #1e3a8a; padding: 20px; border-radius: 1.5rem; text-align: center; margin-bottom: 15px;"><p class="label">AI Decision</p><div id="adviceVal" style="font-size: 2rem; font-weight: 900;">--</div></div>
@@ -52,13 +48,13 @@ tool_smart_terminal = """
     <script>
         async function fetchAIData() {
             const ticker = document.getElementById('tickerInput').value.toUpperCase();
-            const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=d5h3vm9r01qll3dlm2sgd5h3vm9r01qll3dlm2t0`);
-            const data = await response.json();
+            const res = await fetch('https://finnhub.io/api/v1/quote?symbol='+ticker+'&token=d5h3vm9r01qll3dlm2sgd5h3vm9r01qll3dlm2t0');
+            const data = await res.json();
             document.getElementById('priceVal').innerText = '$' + data.c.toFixed(2);
             document.getElementById('targetVal').innerText = '$' + (data.c * 1.05).toFixed(2);
             document.getElementById('adviceVal').innerText = data.dp > 0 ? "STRONG BUY" : "HOLD";
             document.getElementById('signalCard').style.backgroundColor = data.dp > 0 ? "#065f46" : "#1e3a8a";
-            new TradingView.widget({"autosize": true, "symbol": ticker, "interval": "D", "theme": "dark", "style": "1", "container_id": "chart_container", "hide_top_toolbar": true, "locale": "en"});
+            new TradingView.widget({"autosize": true, "symbol": ticker, "interval": "D", "theme": "dark", "container_id": "chart_container", "hide_top_toolbar": true});
         }
         window.onload = fetchAIData;
     </script>
@@ -66,87 +62,65 @@ tool_smart_terminal = """
 </html>
 """
 
-# JOUW CODE 2: AI TRADER - DYNAMIC RISK & TIER (DONKERGRIJS)
+# --- TOOL 2: RISK & TIER SYSTEM ---
 tool_risk_tier = """
 <!DOCTYPE html>
-<html lang="nl">
+<html>
 <head>
-    <meta charset="UTF-8">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #c9d1d9; padding: 20px; }
+        body { font-family: sans-serif; background: #0d1117; color: #c9d1d9; padding: 20px; }
         .container { max-width: 850px; margin: auto; background: #161b22; padding: 25px; border-radius: 12px; border: 1px solid #30363d; }
-        .controls { background: #21262d; padding: 20px; border-radius: 10px; border: 1px solid #30363d; margin-bottom: 20px; }
         .search-group { display: flex; gap: 10px; margin-bottom: 15px; }
-        input { flex: 1; background: #0d1117; border: 1px solid #30363d; color: white; padding: 12px; border-radius: 6px; text-transform: uppercase; }
-        button { border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .btn-blue { background: #1f6feb; color: white; }
-        .btn-green { background: #238636; color: white; }
-        .btn-outline { background: transparent; border: 1px solid #f85149; color: #f85149; }
-        .card { position: relative; background: #0d1117; border: 2px solid #30363d; padding: 20px; border-radius: 10px; margin-bottom: 15px; transition: 0.3s; }
-        .tier-A { border-color: #39d353 !important; border-left: 8px solid #39d353; }
-        .tier-B { border-color: #58a6ff !important; border-left: 8px solid #58a6ff; }
-        .tier-C { border-color: #d29922 !important; border-left: 8px solid #d29922; }
-        .tier-D { border-color: #f85149 !important; border-left: 8px solid #f85149; }
-        .header-flex { display: flex; justify-content: space-between; align-items: flex-start; }
-        .tier-indicator { font-size: 1.8em; font-weight: 900; line-height: 1; }
-        .status-badge { padding: 4px 10px; border-radius: 4px; font-size: 0.7em; font-weight: bold; text-transform: uppercase; display: inline-block; margin-top: 5px; }
-        .bg-swing { background: #238636; color: white; }
-        .bg-hold { background: #d29922; color: #0d1117; }
-        .bg-noswing { background: #f85149; color: white; }
+        input { flex: 1; background: #0d1117; border: 1px solid #30363d; color: white; padding: 12px; border-radius: 6px; }
+        button { border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; background: #1f6feb; color: white; }
+        .card { position: relative; background: #0d1117; border: 2px solid #30363d; padding: 20px; border-radius: 10px; margin-bottom: 15px; border-left: 8px solid #39d353; }
+        .tier-A { border-color: #39d353; }
+        .tier-indicator { font-size: 1.8em; font-weight: 900; color: #39d353; }
         .levels { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px; }
         .level { background: #161b22; padding: 10px; border-radius: 6px; text-align: center; border: 1px solid #30363d; }
-        .label-text { font-size: 0.7em; color: #8b949e; display: block; margin-bottom: 2px; }
-        .price-text { font-weight: bold; font-family: monospace; font-size: 1.1em; display: block; }
-        .tp { color: #39d353; } .sl { color: #f85149; }
-        .news-box { margin-top: 15px; padding-top: 15px; border-top: 1px solid #30363d; font-size: 0.85em; }
-        .ai-intel { background: rgba(88, 166, 255, 0.1); padding: 8px; border-radius: 4px; margin-top: 10px; border-left: 3px solid #58a6ff; font-style: italic; }
-        .btn-delete { position: absolute; top: 10px; right: 10px; background: none; color: #8b949e; font-size: 22px; cursor: pointer; border: none; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="controls">
-        <div class="search-group">
-            <input type="text" id="manualInput" placeholder="TICKER...">
-            <button class="btn-blue" onclick="manualSearch()">AI ANALYSE</button>
-        </div>
-        <div style="display: flex; justify-content: space-between;">
-            <button class="btn-green" onclick="startAutoScan()">START AUTO-SCAN</button>
-            <button class="btn-outline" onclick="document.getElementById('display').innerHTML=''">WIS ALLES</button>
-        </div>
+    <div class="search-group">
+        <input type="text" id="manualInput" placeholder="TICKER...">
+        <button onclick="manualSearch()">AI ANALYSE</button>
     </div>
-    <div id="status" style="text-align: center; font-size: 0.8em; margin-bottom: 10px; color: #8b949e;"></div>
     <div id="display"></div>
 </div>
 <script>
-const API_KEY = "d5h3vm9r01qll3dlm2sgd5h3vm9r01qll3dlm2t0";
-const TICKERS = ["AAPL", "TSLA", "NVDA", "AMZN", "MSFT", "AMD", "META", "GOOGL", "NFLX"];
+async function manualSearch() {
+    const ticker = document.getElementById("manualInput").value.toUpperCase();
+    const res = await fetch('https://finnhub.io/api/v1/quote?symbol='+ticker+'&token=d5h3vm9r01qll3dlm2sgd5h3vm9r01qll3dlm2t0');
+    const data = await res.json();
+    const html = `
+        <div class="card">
+            <div style="display:flex; justify-content:space-between;">
+                <div><strong>${ticker}</strong><br><span style="background:green;padding:2px 5px;border-radius:4px;font-size:10px;">SWING</span></div>
+                <div class="tier-indicator">A</div>
+            </div>
+            <div class="levels">
+                <div class="level"><small>STOP</small><br>$${(data.c * 0.96).toFixed(2)}</div>
+                <div class="level"><small>ENTRY</small><br>$${data.c.toFixed(2)}</div>
+                <div class="level"><small>TARGET</small><br>$${(data.c * 1.08).toFixed(2)}</div>
+            </div>
+        </div>`;
+    document.getElementById("display").insertAdjacentHTML('afterbegin', html);
+}
+</script>
+</body>
+</html>
+"""
 
-async function analyzeTicker(ticker, isManual = false) {
-    const display = document.getElementById("display");
-    ticker = ticker.toUpperCase();
-    try {
-        const quoteRes = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${API_KEY}`);
-        const data = await quoteRes.json();
-        if (!data.c) return;
-        const newsRes = await fetch(`https://finnhub.io/api/v1/company-news?symbol=${ticker}&from=2026-01-01&to=2026-01-26&token=${API_KEY}`);
-        const news = await newsRes.json();
-        const latestNews = news.length > 0 ? news[0] : null;
-        const current = data.c, vola = ((data.h - data.l) / current) * 100;
-        let dynStopPerc = Math.min(Math.max(vola * 1.5, 2.0), 6.0).toFixed(1);
-        let dynTargetPerc = (dynStopPerc * 2.3).toFixed(1);
-        let score = 50 + (data.dp * 6) - (vola * 2);
-        score = Math.min(Math.max(score, 1), 99);
-        let tier = "C", statusClass = "bg-hold", statusText = "HOLD", tierColor = "#d29922";
-        if (score > 75 && vola < 4) { tier = "A"; statusClass = "bg-swing"; statusText = "SWING"; tierColor = "#39d353"; }
-        else if (score > 60) { tier = "B"; statusClass = "bg-swing"; statusText = "SWING"; tierColor = "#58a6ff"; }
-        else if (score < 40 || vola > 7) { tier = "D"; statusClass = "bg-noswing"; statusText = "NO SWING"; tierColor = "#f85149"; }
-        const id = 'id-' + Date.now() + ticker;
-        const html = `
-            <div class="card tier-${tier}" id="${id}">
-                <button class="btn-delete" onclick="document.getElementById('${id}').remove()">×</button>
-                <div class="header-flex">
-                    <div><strong>${ticker}</strong><br><span class="status-badge ${statusClass
+# --- RENDER TABS ---
+tab1, tab2 = st.tabs(["🚀 AI SMART TERMINAL", "🛡️ RISK & TIER SYSTEM"])
+
+with tab1:
+    components.html(tool_smart_terminal, height=800, scrolling=True)
+
+with tab2:
+    components.html(tool_risk_tier, height=800, scrolling=True)
+
 
 
 
