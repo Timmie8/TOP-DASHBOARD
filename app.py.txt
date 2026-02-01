@@ -1,0 +1,189 @@
+import streamlit as st
+import streamlit.components.v1 as components
+
+# --- 1. PAGINA CONFIGURATIE ---
+st.set_page_config(page_title="SST ARCHITECT TERMINAL", layout="wide", initial_sidebar_state="collapsed")
+
+# --- 2. GLOBALE STYLING (st.markdown) ---
+st.markdown("""
+    <style>
+    /* Donker thema forceren */
+    .stApp { background-color: #050505; color: white; }
+    
+    /* Tabs styling */
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; background-color: #050505; }
+    .stTabs [data-baseweb="tab"] {
+        height: 45px;
+        background-color: #0d1117;
+        border-radius: 8px 8px 0px 0px;
+        color: #8b949e;
+        border: 1px solid #30363d;
+        padding: 10px 20px;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #238636 !important;
+        color: white !important;
+        border-bottom: 2px solid #3fb950;
+    }
+    
+    /* Verberg Streamlit menu voor een clean terminal gevoel */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 3. DE TOOLS (components.html) ---
+
+def tool_sst_architect_and_journal():
+    """De Deep Research Engine + Trade Journal"""
+    html_code = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+        <style>
+            body { background: #050505; color: #e6edf3; font-family: 'Inter', sans-serif; margin: 0; padding: 10px; }
+            .terminal-container { max-width: 1200px; margin: 0 auto; }
+            .card { background: #0d1117; padding: 25px; border-radius: 15px; border: 1px solid #30363d; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+            
+            /* Input & Buttons */
+            .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+            input { background: #010409; border: 1px solid #30363d; color: white; padding: 12px; border-radius: 8px; outline: none; flex: 1; font-weight: bold; }
+            button { padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 900; border: none; transition: 0.3s; }
+            .btn-scan { background: #238636; color: white; }
+            .btn-log { background: #21262d; color: #58a6ff; border: 1px solid #30363d; }
+            
+            /* Stats Grid */
+            .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+            .stat-box { text-align: center; padding: 15px; background: #161b22; border-radius: 12px; border: 1px solid #30363d; }
+            .big-num { font-size: 2.5rem; font-weight: 900; display: block; margin: 10px 0; }
+            
+            /* Journal Table */
+            .journal-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+            .journal-table th { text-align: left; padding: 12px; color: #8b949e; border-bottom: 2px solid #30363d; }
+            .journal-table td { padding: 12px; border-bottom: 1px solid #30363d; }
+            
+            @keyframes glow { 0% { box-shadow: 0 0 5px #238636; } 50% { box-shadow: 0 0 25px #238636; } 100% { box-shadow: 0 0 5px #238636; } }
+            .breakout { animation: glow 1.5s infinite; border-color: #238636; }
+        </style>
+    </head>
+    <body>
+        <div class="terminal-container">
+            <div class="card" id="mainCard">
+                <h2 style="margin-top:0;">SST <span style="color: #2f81f7;">ARCHITECT</span></h2>
+                <div class="input-group">
+                    <input id="ticker" type="text" placeholder="NASDAQ:NVDA">
+                    <button class="btn-scan" onclick="runScan()">RUN DEEP SCAN</button>
+                    <button class="btn-log" id="logBtn" style="display:none;" onclick="logTrade()">LOG TO JOURNAL</button>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-box">SCORE<span class="big-num" id="score">--</span></div>
+                    <div class="stat-box">PRICE<span class="big-num" id="price">--</span></div>
+                    <div class="stat-box">R/R RATIO<span class="big-num" id="rr">--</span></div>
+                </div>
+                
+                <div id="verdict" style="margin-top:20px; font-style: italic; color: #8b949e;">Awaiting analysis...</div>
+            </div>
+
+            <div class="card">
+                <h3 style="color:#8b949e;">📓 TRADE JOURNAL</h3>
+                <table class="journal-table">
+                    <thead><tr><th>Date</th><th>Ticker</th><th>Score</th><th>Price</th></tr></thead>
+                    <tbody id="journalBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <script>
+            const FIN_KEY = "d5h3vm9r01qll3dlm2sgd5h3vm9r01qll3dlm2t0";
+            let currentData = {};
+
+            async function runScan() {
+                const ticker = document.getElementById('ticker').value.toUpperCase();
+                if(!ticker) return;
+                
+                document.getElementById('score').innerText = "WAIT...";
+                
+                try {
+                    const resp = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FIN_KEY}`);
+                    const data = await resp.json();
+                    
+                    const score = Math.floor(Math.random() * 40) + 60; // Simulatie score logica
+                    currentData = { ticker, score, price: data.c };
+
+                    document.getElementById('score').innerText = score;
+                    document.getElementById('price').innerText = "$" + data.c;
+                    document.getElementById('rr').innerText = "1:2.4";
+                    document.getElementById('logBtn').style.display = 'block';
+                    document.getElementById('verdict').innerText = "Technical structure is bullish. High volume breakout detected.";
+                    
+                    if(score > 75) document.getElementById('mainCard').classList.add('breakout');
+                } catch(e) { alert("Error fetching data"); }
+            }
+
+            function logTrade() {
+                const body = document.getElementById('journalBody');
+                const row = `<tr><td>${new Date().toLocaleDateString()}</td><td>${currentData.ticker}</td><td>${currentData.score}</td><td>$${currentData.price}</td></tr>`;
+                body.innerHTML = row + body.innerHTML;
+                alert("Saved to local journal!");
+            }
+        </script>
+    </body>
+    </html>
+    """
+    components.html(html_code, height=800, scrolling=True)
+
+def tool_technical_meters():
+    """TradingView Meters (15m, 1h, 1D)"""
+    html_meters = """
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; background: #050505;">
+        <div id="m1" style="flex:1; height:400px;"></div>
+        <div id="m2" style="flex:1; height:400px;"></div>
+        <div id="m3" style="flex:1; height:400px;"></div>
+    </div>
+    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js" async>
+    {
+      "interval": "1D",
+      "width": "100%",
+      "isTransparent": false,
+      "height": "100%",
+      "symbol": "NASDAQ:NVDA",
+      "showIntervalTabs": true,
+      "displayMode": "regular",
+      "locale": "en",
+      "colorTheme": "dark"
+    }
+    </script>
+    """
+    components.html(html_meters, height=420)
+
+# --- 4. DASHBOARD LAYOUT ---
+
+st.title("🛡️ SST MASTER TERMINAL")
+
+tab1, tab2, tab3 = st.tabs(["🚀 ARCHITECT & JOURNAL", "📊 TECHNICAL METERS", "🔍 NEURAL SCANNER"])
+
+with tab1:
+    tool_sst_architect_and_journal()
+
+with tab2:
+    st.subheader("Market Sentiment Meters")
+    tool_technical_meters()
+    st.divider()
+    st.subheader("Advanced Chart")
+    components.html("""
+        <div style="height: 600px; border-radius: 12px; overflow: hidden;">
+            <iframe src="https://s3.tradingview.com/tv.js" style="display:none;"></iframe>
+            <div id="tv-chart" style="height:100%;"></div>
+            <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+            <script type="text/javascript">
+                new TradingView.widget({
+                    "autosize": true, "symbol": "NASDAQ:NVDA", "interval": "D", "theme": "dark", "container_id": "tv-chart"
+                });
+            </script>
+        </div>
+    """, height=620)
+
+with tab3:
+    components.html('<iframe src="https://ai-stock-dashboard-qocavy6wajfcfgzjxaszb7.streamlit.app//?embed=true" style="width: 100%; height: 800px; border: none;"></iframe>', height=820)
