@@ -1,202 +1,129 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# Pagina instellingen
-st.set_page_config(page_title="SST AI TRADING SUITE", layout="wide")
+# 1. Pagina Configuratie
+st.set_page_config(page_title="SST SMART TERMINAL", layout="wide")
 
-# API Config
-FIN_TOKEN = "d5h3vm9r01qll3dlm2sgd5h3vm9r01qll3dlm2t0"
-GEM_TOKEN = "AIzaSyDTDyQWKgCJ3tvcexRCYYvuRUfkTpN4J5w"
+# API Keys
+FIN_KEY = "d5h3vm9r01qll3dlm2sgd5h3vm9r01qll3dlm2t0"
 
-# CSS om Streamlit elementen te verbergen en tabs te stylen
+# 2. CSS voor een fullscreen ervaring
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
-    .block-container { padding: 0px !important; }
-    iframe { height: 100vh !important; width: 100% !important; border: none !important; }
+    .block-container { padding: 0px !important; background-color: #050608; }
+    iframe { border: none !important; width: 100% !important; height: 95vh !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# De volledige applicatie in één HTML/JS block voor maximale stabiliteit
-full_app_html = f"""
+# 3. De Terminal Code
+terminal_html = f"""
 <!DOCTYPE html>
 <html>
 <head>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        body {{ background-color: #050608; color: white; font-family: 'Inter', sans-serif; margin: 0; overflow: hidden; }}
-        .nav {{ display: flex; background: #0d1117; border-bottom: 1px solid #30363d; padding: 0 20px; }}
-        .nav-btn {{ padding: 15px 20px; cursor: pointer; color: #8b949e; border-bottom: 2px solid transparent; font-weight: bold; font-size: 13px; }}
-        .nav-btn.active {{ color: #2f81f7; border-bottom: 2px solid #2f81f7; background: rgba(47, 129, 247, 0.1); }}
-        .content {{ padding: 20px; height: calc(100vh - 60px); overflow-y: auto; }}
-        .tab-content {{ display: none; }}
-        .tab-content.active {{ display: block; }}
-        
-        /* UI Elements */
-        input, textarea {{ background: #161b22; border: 1px solid #30363d; color: white; padding: 12px; border-radius: 8px; font-family: inherit; }}
-        button {{ background: #238636; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; }}
-        .card {{ background: #161b22; border: 1px solid #30363d; padding: 20px; border-radius: 12px; margin-bottom: 20px; }}
-        .score-big {{ font-size: 4rem; font-weight: 900; margin: 10px 0; }}
-        table {{ width: 100%; border-collapse: collapse; }}
-        th {{ text-align: left; color: #8b949e; padding: 10px; border-bottom: 1px solid #30363d; }}
-        td {{ padding: 10px; border-bottom: 1px solid #21262d; }}
+        body {{ background-color: #050608; color: white; font-family: 'Inter', sans-serif; margin: 0; padding: 20px; overflow: hidden; }}
+        .header-row {{ display: flex; gap: 15px; margin-bottom: 20px; align-items: center; }}
+        input {{ background: #161b22; border: 1px solid #30363d; color: white; padding: 15px; border-radius: 10px; flex: 1; font-size: 16px; font-weight: bold; }}
+        button {{ background: #2563eb; color: white; border: none; padding: 15px 30px; border-radius: 10px; cursor: pointer; font-weight: bold; transition: 0.2s; }}
+        button:hover {{ background: #1d4ed8; }}
+        .stats-container {{ display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-bottom: 20px; }}
+        .card {{ background: #0d1117; border: 1px solid #30363d; padding: 20px; border-radius: 12px; text-align: center; }}
+        .score-value {{ font-size: 3.5rem; font-weight: 900; margin: 5px 0; }}
+        .advice-box {{ display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: bold; text-transform: uppercase; border: 2px solid #30363d; }}
+        #chart_container {{ height: calc(100vh - 250px); border-radius: 15px; overflow: hidden; border: 1px solid #30363d; }}
     </style>
 </head>
 <body>
 
-<div class="nav">
-    <div class="nav-btn active" onclick="openTab(event, 't1')">🚀 TERMINAL</div>
-    <div class="nav-btn" onclick="openTab(event, 't2')">🛡️ RISK</div>
-    <div class="nav-btn" onclick="openTab(event, 't3')">📊 SCANNER</div>
-    <div class="nav-btn" onclick="openTab(event, 't4')">🔍 ANALYZER</div>
-    <div class="nav-btn" onclick="openTab(event, 't5')">📈 TECH PRO</div>
-    <div class="nav-btn" onclick="openTab(event, 't6')">🏛️ ARCHITECT</div>
-</div>
-
-<div class="content">
-    <div id="t1" class="tab-content active">
-        <div style="display:flex; gap:10px; margin-bottom:20px;">
-            <input id="in1" value="NVDA" style="flex:1;">
-            <button onclick="run1()">SCAN & SCORE</button>
-        </div>
-        <div style="display:grid; grid-template-columns: 1fr 2fr; gap:20px; margin-bottom:20px;">
-            <div class="card" style="text-align:center;">
-                <div style="color:#8b949e;">AI SCORE</div>
-                <div id="sc1" class="score-big">--</div>
-            </div>
-            <div class="card" id="adv1" style="display:flex; align-items:center; justify-content:center; font-size:1.5rem; font-weight:bold;">READY</div>
-        </div>
-        <div id="ch1" style="height:500px; border-radius:12px; overflow:hidden; border:1px solid #30363d;"></div>
+    <div class="header-row">
+        <input id="tickerInput" value="NVDA" placeholder="Voer ticker in (bijv. AAPL, BTCUSD)...">
+        <button onclick="updateTerminal()">UPDATE CHART & SCORE</button>
     </div>
 
-    <div id="t2" class="tab-content">
+    <div class="stats-container">
         <div class="card">
-            <h2>Risk & Tier</h2>
-            <input id="in2" placeholder="TICKER"> <button onclick="run2()">CALC</button>
-            <div id="out2" style="margin-top:20px;"></div>
+            <div style="color: #8b949e; font-size: 0.8rem; font-weight: bold;">AI MOMENTUM SCORE</div>
+            <div id="scoreDisplay" class="score-value">--</div>
+        </div>
+        <div id="adviceDisplay" class="card advice-box">
+            WAITING FOR DATA
         </div>
     </div>
 
-    <div id="t3" class="tab-content">
-        <div class="card">
-            <textarea id="in3" style="width:100%; margin-bottom:10px;">AAPL,NVDA,TSLA,AMD</textarea>
-            <button onclick="run3()" style="width:100%;">RUN BATCH SCAN</button>
-            <table><thead><tr><th>SYMBOL</th><th>PRICE</th><th>CHANGE</th></tr></thead><tbody id="out3"></tbody></table>
-        </div>
-    </div>
+    <div id="chart_container"></div>
 
-    <div id="t4" class="tab-content">
-        <div class="card">
-            <input id="in4" value="AAPL"> <button onclick="run4()">ANALYZE</button>
-            <div id="out4" style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:20px;"></div>
-        </div>
-    </div>
+    <script src="https://s3.tradingview.com/tv.js"></script>
+    <script>
+        async function updateTerminal() {{
+            const symbol = document.getElementById('tickerInput').value.toUpperCase();
+            
+            try {{
+                // 1. Haal Prijsdata op voor Score
+                const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${{symbol}}&token={FIN_KEY}`);
+                const data = await response.json();
+                
+                if (data.c) {{
+                    // Score berekening: Basis 50 + (dagelijkse verandering * multiplier)
+                    const rawScore = Math.round(50 + (data.dp * 12));
+                    const finalScore = Math.min(Math.max(rawScore, 5), 99);
+                    
+                    const scoreEl = document.getElementById('scoreDisplay');
+                    const adviceEl = document.getElementById('adviceDisplay');
+                    
+                    scoreEl.innerText = finalScore;
+                    
+                    // Visuele feedback op basis van score
+                    if (finalScore > 60) {{
+                        scoreEl.style.color = "#3fb950";
+                        adviceEl.innerText = "Bullish Momentum: Strong Buy";
+                        adviceEl.style.borderColor = "#3fb950";
+                        adviceEl.style.color = "#3fb950";
+                    }} else if (finalScore < 40) {{
+                        scoreEl.style.color = "#f85149";
+                        adviceEl.innerText = "Bearish Trend: Avoid / Short";
+                        adviceEl.style.borderColor = "#f85149";
+                        adviceEl.style.color = "#f85149";
+                    }} else {{
+                        scoreEl.style.color = "#d29922";
+                        adviceEl.innerText = "Neutral / Sideways Market";
+                        adviceEl.style.borderColor = "#d29922";
+                        adviceEl.style.color = "#d29922";
+                    }}
 
-    <div id="t5" class="tab-content">
-        <div class="card">
-            <input id="in5" placeholder="ADD SYMBOL"> <button onclick="run5()">+</button>
-            <div id="out5" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:15px; margin-top:20px;"></div>
-        </div>
-    </div>
-
-    <div id="t6" class="tab-content">
-        <div class="card">
-            <input id="in6" placeholder="DEEP SCAN SYMBOL" style="width:70%;"> <button onclick="run6()">ARCHITECT SCAN</button>
-            <div style="display:grid; grid-template-columns:1fr 2fr; gap:20px; margin-top:20px;">
-                <div style="text-align:center;" class="card">
-                    <div style="color:#8b949e;">CONFIDENCE</div>
-                    <div id="sc6" class="score-big">--</div>
-                </div>
-                <div class="card">
-                    <h3 id="sym6">READY</h3>
-                    <p id="ver6" style="color:#c9d1d9; line-height:1.6;"></p>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script src="https://s3.tradingview.com/tv.js"></script>
-<script>
-    const F_KEY = "{FIN_TOKEN}";
-    const G_KEY = "{GEM_TOKEN}";
-
-    function openTab(evt, tabName) {{
-        var i, content, btn;
-        content = document.getElementsByClassName("tab-content");
-        for (i = 0; i < content.length; i++) {{ content[i].style.display = "none"; }}
-        btn = document.getElementsByClassName("nav-btn");
-        for (i = 0; i < btn.length; i++) {{ btn[i].className = btn[i].className.replace(" active", ""); }}
-        document.getElementById(tabName).style.display = "block";
-        evt.currentTarget.className += " active";
-    }}
-
-    async function run1() {{
-        const s = document.getElementById('in1').value.toUpperCase();
-        const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${{s}}&token=${{F_KEY}}`);
-        const d = await r.json();
-        const score = Math.round(50 + (d.dp * 12));
-        document.getElementById('sc1').innerText = score;
-        document.getElementById('sc1').style.color = score > 55 ? '#3fb950' : '#f85149';
-        document.getElementById('adv1').innerText = score > 55 ? "BULLISH MOMENTUM" : "BEARISH / NEUTRAL";
-        new TradingView.widget({{"autosize":true, "symbol":s, "interval":"D", "theme":"dark", "container_id":"ch1", "style":"1"}});
-    }}
-
-    async function run2() {{
-        const s = document.getElementById('in2').value.toUpperCase();
-        const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${{s}}&token=${{F_KEY}}`);
-        const d = await r.json();
-        document.getElementById('out2').innerHTML = `<h3>${{s}} at $${{d.c}}</h3><p>Stop Loss: $${{(d.c*0.96).toFixed(2)}}</p><p>Target: $${{(d.c*1.08).toFixed(2)}}</p>`;
-    }}
-
-    async function run3() {{
-        const list = document.getElementById('in3').value.split(',');
-        let h = '';
-        for(let t of list) {{
-            const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${{t.trim().toUpperCase()}}&token=${{F_KEY}}`);
-            const d = await r.json();
-            h += `<tr><td>${{t.toUpperCase()}}</td><td>$${{d.c}}</td><td style="color:${{d.dp>0?'#3fb950':'#f85149'}}">${{d.dp.toFixed(2)}}%</td></tr>`;
+                    // 2. Laad de TradingView Chart
+                    new TradingView.widget({{
+                        "autosize": true,
+                        "symbol": symbol,
+                        "interval": "D",
+                        "timezone": "Etc/UTC",
+                        "theme": "dark",
+                        "style": "1",
+                        "locale": "nl",
+                        "toolbar_bg": "#f1f3f6",
+                        "enable_publishing": false,
+                        "hide_top_toolbar": false,
+                        "save_image": false,
+                        "container_id": "chart_container"
+                    }});
+                }} else {{
+                    alert("Ticker niet gevonden. Probeer een andere.");
+                }}
+            }} catch (error) {{
+                console.error("Fout:", error);
+            }}
         }}
-        document.getElementById('out3').innerHTML = h;
-    }}
 
-    async function run4() {{
-        const s = document.getElementById('in4').value.toUpperCase();
-        const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${{s}}&token=${{F_KEY}}`);
-        const d = await r.json();
-        document.getElementById('out4').innerHTML = `<div class="card">SIGNAL: ${{d.dp > 0 ? 'BUY' : 'HOLD'}}</div><div class="card">MOMENTUM: ${{d.dp.toFixed(2)}}%</div>`;
-    }}
-
-    async function run5() {{
-        const s = document.getElementById('in5').value.toUpperCase();
-        const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${{s}}&token=${{F_KEY}}`);
-        const d = await r.json();
-        const c = document.createElement('div'); c.className = 'card';
-        c.innerHTML = `<b>${{s}}</b><br>$${{d.c}}<br>${{d.dp.toFixed(2)}}%`;
-        document.getElementById('out5').prepend(c);
-    }}
-
-    async function run6() {{
-        const s = document.getElementById('in6').value.toUpperCase();
-        const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${{s}}&token=${{F_KEY}}`);
-        const d = await r.json();
-        document.getElementById('sc6').innerText = Math.round(50 + (d.dp * 15));
-        document.getElementById('sym6').innerText = s + " ARCHITECT REPORT";
-        const g = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${{G_KEY}}`, {{
-            method:"POST", headers:{{"Content-Type":"application/json"}},
-            body:JSON.stringify({{contents:[{{parts:[{{text:"Analyseer "+s+" prijs actie. Geef professioneel advies in 2 zinnen."}}]}}]}})
-        }});
-        const gD = await g.json();
-        document.getElementById('ver6').innerText = gD.candidates[0].content.parts[0].text;
-    }}
-    
-    window.onload = run1;
-</script>
+        // Start direct met NVDA bij laden
+        window.onload = updateTerminal;
+    </script>
 </body>
 </html>
 """
 
-components.html(full_app_html, height=1000, scrolling=False)
+# Render de terminal
+components.html(terminal_html, height=1000)
 
 
 
