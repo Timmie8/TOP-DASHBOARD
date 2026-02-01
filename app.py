@@ -3,159 +3,177 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="SST AI TRADER", layout="wide")
 
-# Verberg Streamlit UI elementen
+# CSS voor Streamlit Layout
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
     .block-container { padding: 0px; background-color: #050608; }
-    .stTabs [data-baseweb="tab-list"] { background-color: #0d1117; padding: 10px; }
+    .stTabs [data-baseweb="tab-list"] { background-color: #0d1117; padding: 10px; border-bottom: 1px solid #30363d; }
+    .stTabs [data-baseweb="tab"] { color: #8b949e; }
+    .stTabs [aria-selected="true"] { color: #2f81f7 !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- DE DRIE TOOLS ---
-
-# TOOL 1: De Blauwe Terminal (Je originele eerste code)
-tool1 = """
-<div id="smart-terminal" style="background:#050608; color:white; font-family:sans-serif; padding:20px;">
-    <div style="display:flex; gap:10px; margin-bottom:20px;">
-        <input id="t1" type="text" value="NVDA" style="background:#11141b; border:1px solid #1f2937; color:white; padding:10px; border-radius:8px; flex:1;">
-        <button onclick="s1()" style="background:#2563eb; color:white; border:none; padding:10px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">SCAN</button>
-    </div>
-    <div id="res1" style="background:#11141b; padding:20px; border-radius:12px; border-left:5px solid #3b82f6;">
-        <div id="out1" style="font-size:1.5rem; font-weight:bold;">Voer ticker in...</div>
-    </div>
-</div>
-<script>
-async function s1() {
-    const t = document.getElementById('t1').value.toUpperCase();
-    const r = await fetch('https://finnhub.io/api/v1/quote?symbol='+t+'&token=d5h3vm9r01qll3dlm2sgd5h3vm9r01qll3dlm2t0');
-    const d = await r.json();
-    document.getElementById('out1').innerHTML = t + ': $' + d.c + '<br><small style="color:#6b7280">Change: ' + d.dp + '%</small>';
-}
-</script>
-"""
-
-# TOOL 2: Dynamic Risk & Tier System (Je tweede code)
-tool2 = """
-<div style="background:#0d1117; color:#c9d1d9; font-family:sans-serif; padding:20px; min-height:600px;">
-    <input id="t2" type="text" placeholder="TICKER..." style="background:#161b22; border:1px solid #30363d; color:white; padding:10px; border-radius:6px;">
-    <button onclick="s2()" style="background:#1f6feb; color:white; border:none; padding:10px; border-radius:6px; cursor:pointer;">AI ANALYSE</button>
-    <div id="out2" style="margin-top:20px;"></div>
-</div>
-<script>
-async function s2() {
-    const t = document.getElementById('t2').value.toUpperCase();
-    const r = await fetch('https://finnhub.io/api/v1/quote?symbol='+t+'&token=d5h3vm9r01qll3dlm2sgd5h3vm9r01qll3dlm2t0');
-    const d = await r.json();
-    const score = Math.round(50 + (d.dp * 5));
-    const tier = score > 70 ? 'A' : (score > 50 ? 'B' : 'C');
-    document.getElementById('out2').innerHTML = `<div style="border:2px solid #30363d; border-left:8px solid #39d353; padding:20px; border-radius:10px;">
-        <div style="display:flex; justify-content:space-between;"><b>${t}</b> <span style="font-size:1.5em; color:#39d353;">Tier ${tier}</span></div>
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:15px; text-align:center;">
-            <div style="background:#161b22; padding:10px;">SL: $${(d.c*0.96).toFixed(2)}</div>
-            <div style="background:#161b22; padding:10px;">Entry: $${d.c}</div>
-            <div style="background:#161b22; padding:10px;">TP: $${(d.c*1.08).toFixed(2)}</div>
+# --- TOOL 1: DE ORIGINELE SMART TERMINAL ---
+tool1_html = """
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #050608; color: white; font-family: sans-serif; padding: 20px; }
+        .data-strip { background: #11141b; border-radius: 1.5rem; border: 1px solid #1f2937; margin-bottom: 1rem; padding: 1.5rem; border-left: 8px solid #3b82f6; }
+        .value { font-size: 2.5rem; font-weight: 900; }
+        .label { color: #6b7280; text-transform: uppercase; font-size: 0.75rem; font-weight: 800; }
+        #chart_box { height: 400px; border-radius: 1.5rem; overflow: hidden; border: 1px solid #1f2937; margin-top: 20px; }
+        input { background: #11141b; border: 2px solid #1f2937; padding: 15px; border-radius: 1rem; color: white; width: 60%; font-size: 1.2rem; outline: none; }
+        button { background: #2563eb; padding: 15px 30px; border-radius: 1rem; font-weight: 900; cursor: pointer; border: none; color: white; }
+    </style>
+</head>
+<body>
+    <div style="max-width: 800px; margin: auto;">
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <input id="tickerInput" type="text" value="NVDA">
+            <button onclick="fetchAIData()">SCAN</button>
         </div>
-    </div>`;
-}
-</script>
+        <div id="signalCard" style="background: #1e3a8a; padding: 20px; border-radius: 1.5rem; text-align: center; margin-bottom: 15px;">
+            <p class="label">AI Decision</p>
+            <div id="adviceVal" style="font-size: 2rem; font-weight: 900;">READY</div>
+        </div>
+        <div class="data-strip">
+            <p class="label">Market Price</p>
+            <div id="priceVal" class="value">--</div>
+        </div>
+        <div class="data-strip" style="border-left-color: #10b981;">
+            <p class="label">AI Profit Target</p>
+            <div id="targetVal" class="value" style="color: #10b981;">--</div>
+        </div>
+        <div id="chart_box"><div id="chart_container" style="height: 100%;"></div></div>
+    </div>
+    <script src="https://s3.tradingview.com/tv.js"></script>
+    <script>
+        async function fetchAIData() {
+            const ticker = document.getElementById('tickerInput').value.toUpperCase();
+            try {
+                const res = await fetch('https://finnhub.io/api/v1/quote?symbol='+ticker+'&token=d5h3vm9r01qll3dlm2sgd5h3vm9r01qll3dlm2t0');
+                const data = await res.json();
+                document.getElementById('priceVal').innerText = '$' + data.c.toFixed(2);
+                document.getElementById('targetVal').innerText = '$' + (data.c * 1.05).toFixed(2);
+                document.getElementById('adviceVal').innerText = data.dp > 0 ? "STRONG BUY" : "HOLD / WATCH";
+                document.getElementById('signalCard').style.backgroundColor = data.dp > 0 ? "#065f46" : "#1e3a8a";
+                
+                new TradingView.widget({
+                    "autosize": true, "symbol": ticker, "interval": "D", "theme": "dark", 
+                    "container_id": "chart_container", "style": "1", "hide_top_toolbar": true
+                });
+            } catch(e) { alert("Ticker niet gevonden"); }
+        }
+        window.onload = fetchAIData;
+    </script>
+</body>
+</html>
 """
 
-# TOOL 3: SST TERMINAL PRO v5.7 (De volledige tabelcode)
-# Ik heb de HTML exact gelaten zoals jij hem stuurde, maar verpakt in een container.
-tool3 = f"""
-<div id="container-v57" style="background:#0d1117; padding:10px;">
-    {open("terminal_pro.html", "r").read() if False else "HIER KOMT DE CODE"} 
-</div>
-"""
-# Omdat de code van v5.7 te lang is voor een string, herhalen we hier de essentie maar nu GECORRIGEERD:
-full_v57_code = """
-<div id="sst-terminal-pro" style="font-family: sans-serif; color: #e6edf3; background: #0d1117; padding: 20px; border-radius: 15px; border: 1px solid #30363d;">
-    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-        <textarea id="tickerInput" style="flex:1; background:#010409; color:white; border:1px solid #30363d; padding:10px; border-radius:8px;">AAPL, NVDA, TSLA</textarea>
-        <button onclick="startAutoScanner()" style="background:#238636; color:white; border:none; padding:10px 20px; border-radius:8px; font-weight:bold; cursor:pointer;">RUN SCANNER</button>
-    </div>
-    <div id="watchlistBar" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;"></div>
-    <div id="scannerStatus" style="display:none; color:#58a6ff; text-align:center; padding:10px;">Scanning... <span id="scanProgress">0/0</span></div>
-    <div id="rankingContainer" style="display:none; margin-top:20px;">
-        <table style="width:100%; border-collapse:collapse;">
-            <thead><tr style="color:#8b949e; border-bottom:1px solid #30363d; text-align:left;">
-                <th style="padding:10px;">Rank</th><th>Symbol</th><th>AI Score</th><th>Signal</th>
-            </tr></thead>
-            <tbody id="rankingBody"></tbody>
+# --- TOOL 3: DE PRO SCANNER V5.7 (GEOPTIMALISEERD) ---
+tool3_html = """
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { background: #0d1117; color: #e6edf3; font-family: sans-serif; padding: 20px; }
+        .main-card { max-width: 1000px; margin: auto; background: #0d1117; border: 1px solid #30363d; padding: 30px; border-radius: 20px; }
+        textarea { width: 100%; background: #010409; border: 1px solid #30363d; color: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; height: 60px; }
+        .btn-scan { background: #238636; color: white; border: none; padding: 15px 30px; border-radius: 10px; font-weight: 900; cursor: pointer; width: 100%; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { text-align: left; padding: 15px; color: #8b949e; border-bottom: 1px solid #30363d; }
+        td { padding: 15px; border-bottom: 1px solid #21262d; cursor: pointer; }
+        .badge { padding: 5px 10px; border-radius: 6px; font-weight: bold; font-size: 12px; }
+        #modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:100; justify-content:center; align-items:center; }
+        .modal-content { background:#0d1117; border:1px solid #30363d; padding:40px; border-radius:24px; width:400px; text-align:center; }
+    </style>
+</head>
+<body>
+    <div class="main-card">
+        <h2 style="margin-top:0;">SST <span style="color:#2f81f7;">TERMINAL</span> v5.7</h2>
+        <textarea id="listIn" placeholder="AAPL, NVDA, TSLA..."></textarea>
+        <button class="btn-scan" onclick="runScanner()">RUN AI SCANNER</button>
+        
+        <div id="loader" style="display:none; text-align:center; margin:20px; color:#58a6ff;">Analysing market data... <span id="prog">0/0</span></div>
+        
+        <table id="resTable" style="display:none;">
+            <thead><tr><th>Rank</th><th>Symbol</th><th>AI Score</th><th>Signal</th></tr></thead>
+            <tbody id="resBody"></tbody>
         </table>
     </div>
-    <div id="modalOverlay" onclick="this.style.display='none'" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:999; justify-content:center; align-items:center;">
-        <div id="modalContent" onclick="event.stopPropagation()" style="background:#161b22; padding:30px; border-radius:20px; border:1px solid #30363d; width:300px; text-align:center;">
-            <h2 id="modalSymbol"></h2>
-            <div id="modalPrice"></div>
-            <hr style="border:0; border-top:1px solid #30363d; margin:20px 0;">
-            <div style="color:#3fb950">Target: <b id="modalTarget"></b></div>
-            <div style="color:#f85149">Stop: <b id="modalStop"></b></div>
-            <button onclick="document.getElementById('modalOverlay').style.display='none'" style="margin-top:20px; padding:10px 20px; cursor:pointer;">Sluiten</button>
+
+    <div id="modal" onclick="this.style.display='none'">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h1 id="mSym" style="margin:0;">--</h1>
+            <p id="mPrice" style="color:#8b949e;"></p>
+            <div style="background:#161b22; padding:20px; border-radius:15px; margin-top:20px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:10px;"><span>AI Target</span><b id="mTarg" style="color:#3fb950;">--</b></div>
+                <div style="display:flex; justify-content:space-between;"><span>AI Stop</span><b id="mStop" style="color:#f85149;">--</b></div>
+            </div>
+            <button onclick="document.getElementById('modal').style.display='none'" style="margin-top:20px; background:#30363d; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer;">Close</button>
         </div>
     </div>
-</div>
-<script>
-    const SST_KEY = "d5h3vm9r01qll3dlm2sgd5h3vm9r01qll3dlm2t0";
-    let watchlist = ['AAPL', 'NVDA', 'TSLA'];
 
-    async function startAutoScanner() {
-        const input = document.getElementById('tickerInput').value;
-        if(input) watchlist = input.split(/[,\s\\n]+/).filter(t => t.trim() !== "").map(t => t.trim().toUpperCase());
-        
-        document.getElementById('scannerStatus').style.display = 'block';
-        document.getElementById('rankingContainer').style.display = 'none';
-        let results = [];
+    <script>
+        const API_KEY = "d5h3vm9r01qll3dlm2sgd5h3vm9r01qll3dlm2t0";
+        async function runScanner() {
+            const input = document.getElementById('listIn').value || "AAPL,NVDA,TSLA,AMD,MSFT";
+            const tickers = input.split(/[,\s\\n]+/).filter(t => t.trim() !== "");
+            
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('resTable').style.display = 'none';
+            const body = document.getElementById('resBody');
+            body.innerHTML = '';
+            
+            let dataList = [];
+            for(let i=0; i<tickers.length; i++) {
+                const t = tickers[i].trim().toUpperCase();
+                document.getElementById('prog').innerText = (i+1) + "/" + tickers.length;
+                try {
+                    const r = await fetch(`https://finnhub.io/api/v1/quote?symbol=${t}&token=${API_KEY}`);
+                    const d = await r.json();
+                    if(d.c) {
+                        dataList.push({t: t, p: d.c, s: Math.round(50 + (d.dp * 7))});
+                    }
+                } catch(e) {}
+                await new Promise(r => setTimeout(r, 200));
+            }
 
-        for(let i=0; i < watchlist.length; i++) {
-            document.getElementById('scanProgress').innerText = (i+1) + '/' + watchlist.length;
-            try {
-                const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${watchlist[i]}&token=${SST_KEY}`);
-                const data = await res.json();
-                if(data.c) {
-                    results.push({ticker: watchlist[i], price: data.c, score: Math.round(50 + (data.dp * 6))});
-                }
-            } catch(e) {}
-            await new Promise(r => setTimeout(r, 200));
+            dataList.sort((a,b) => b.s - a.s).forEach((item, idx) => {
+                const row = `<tr onclick="openModal('${item.t}', ${item.p})">
+                    <td>#${idx+1}</td><td><b>${item.t}</b></td><td>${item.s}</td>
+                    <td><span class="badge" style="background:${item.s > 55 ? '#238636' : '#2f81f7'}">${item.s > 55 ? 'BUY' : 'HOLD'}</span></td>
+                </tr>`;
+                body.insertAdjacentHTML('beforeend', row);
+            });
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('resTable').style.display = 'table';
         }
 
-        results.sort((a,b) => b.score - a.score);
-        const body = document.getElementById('rankingBody');
-        body.innerHTML = '';
-        results.forEach((res, idx) => {
-            const row = `<tr onclick="showDetails('${res.ticker}', ${res.price})" style="cursor:pointer; border-bottom:1px solid #21262d;">
-                <td style="padding:15px;">#${idx+1}</td>
-                <td><b>${res.ticker}</b></td>
-                <td>${res.score}</td>
-                <td><span style="background:${res.score > 55 ? '#238636' : '#2f81f7'}; padding:5px; border-radius:4px; font-size:10px; color:white;">${res.score > 55 ? 'BUY' : 'HOLD'}</span></td>
-            </tr>`;
-            body.insertAdjacentHTML('beforeend', row);
-        });
-
-        document.getElementById('scannerStatus').style.display = 'none';
-        document.getElementById('rankingContainer').style.display = 'block';
-    }
-
-    function showDetails(t, p) {
-        document.getElementById('modalSymbol').innerText = t;
-        document.getElementById('modalPrice').innerText = 'Entry: $' + p;
-        document.getElementById('modalTarget').innerText = '$' + (p * 1.08).toFixed(2);
-        document.getElementById('modalStop').innerText = '$' + (p * 0.95).toFixed(2);
-        document.getElementById('modalOverlay').style.display = 'flex';
-    }
-</script>
+        function openModal(t, p) {
+            document.getElementById('mSym').innerText = t;
+            document.getElementById('mPrice').innerText = "Current Price: $" + p.toFixed(2);
+            document.getElementById('mTarg').innerText = "$" + (p * 1.08).toFixed(2);
+            document.getElementById('mStop').innerText = "$" + (p * 0.95).toFixed(2);
+            document.getElementById('modal').style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
 """
 
-# --- TAB RENDEREN ---
-t1, t2, t3 = st.tabs(["🚀 SMART TERMINAL", "🛡️ RISK SYSTEM", "📊 PRO SCANNER v5.7"])
+# --- TABS RENDEREN ---
+tab1, tab3 = st.tabs(["🚀 SMART TERMINAL", "📊 PRO SCANNER v5.7"])
 
-with t1:
-    components.html(tool1, height=600, scrolling=True)
-with t2:
-    components.html(tool2, height=600, scrolling=True)
-with t3:
-    components.html(full_v57_code, height=900, scrolling=True)
+with tab1:
+    components.html(tool1_html, height=900, scrolling=True)
+
+with tab3:
+    components.html(tool3_html, height=900, scrolling=True)
 
 
 
