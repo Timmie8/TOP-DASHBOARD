@@ -23,10 +23,11 @@ st.markdown("""
     .kpi-value { font-size: 1.6rem; font-weight: 800; }
     .kpi-label { font-size: 0.65rem; color: #8b949e; text-transform: uppercase; margin-bottom: 5px; }
 
-    /* Score Colors - High Contrast */
-    .score-high { color: #3fb950 !important; text-shadow: 0 0 10px rgba(63, 185, 80, 0.4); }
-    .score-mid { color: #d29922 !important; text-shadow: 0 0 10px rgba(210, 153, 34, 0.4); }
-    .score-low { color: #f85149 !important; text-shadow: 0 0 10px rgba(248, 81, 73, 0.4); }
+    /* Score Colors - High Contrast met Glow */
+    .score-high { color: #3fb950 !important; text-shadow: 0 0 10px rgba(63, 185, 80, 0.6); }
+    .score-mid { color: #d29922 !important; text-shadow: 0 0 10px rgba(210, 153, 34, 0.6); }
+    .score-low { color: #f85149 !important; text-shadow: 0 0 10px rgba(248, 81, 73, 0.6); }
+    
     .text-bull { color: #3fb950 !important; }
     .text-bear { color: #f85149 !important; }
 
@@ -59,7 +60,7 @@ st.markdown("""
     }
     .wl-card b { 
         color: #ffffff !important; 
-        text-shadow: 0px 0px 5px rgba(255,255,255,0.2);
+        text-shadow: 0px 0px 5px rgba(255,255,255,0.4);
     }
     
     .alert-trend { border: 2px solid #3fb950 !important; box-shadow: 0 0 12px rgba(63, 185, 80, 0.4); }
@@ -97,7 +98,7 @@ def get_analysis(ticker_symbol):
         ml, sl = macd.iloc[-1, 0], macd.iloc[-1, 2]
         e20, e50, e200 = ta.ema(df['Close'], 20).iloc[-1], ta.ema(df['Close'], 50).iloc[-1], ta.ema(df['Close'], 200).iloc[-1]
         
-        # Verbeterde score logica (max 100)
+        # Score logica
         score = max(min(int(50 + (change * 12) + (rsi - 50) * 0.5), 100), 0)
         
         signal_text = "NONE"
@@ -134,10 +135,11 @@ if c3.button("🔄 SYNC", use_container_width=True): st.rerun()
 # --- UI: MAIN KPI BAR ---
 active_data = st.session_state.last_results.get(st.session_state.current_ticker) or get_analysis(st.session_state.current_ticker)
 if active_data:
+    # Bepaal de score-klasse voor de felle kleur
     s_val = active_data["score"]
-    # Score kleur gelijk aan watchlist logica
     s_class = "score-high" if s_val >= 60 else "score-mid" if s_val >= 40 else "score-low"
     
+    # Andere kleurklassen
     macd_class = "text-bull" if active_data["macd_bull"] else "text-bear"
     ema_class = "text-bull" if active_data["ema_ok"] else "text-bear"
     price_class = "text-bull" if active_data["change"] >= 0 else "text-bear"
@@ -204,8 +206,6 @@ for idx, item in enumerate(st.session_state.watchlist):
             if b2.button("DEL", key=f"d_{item}"): 
                 st.session_state.watchlist.remove(item)
                 st.rerun()
-
-
 
 
 
