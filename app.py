@@ -30,18 +30,6 @@ st.markdown("""
     .text-bull { color: #3fb950 !important; }
     .text-bear { color: #f85149 !important; }
 
-    /* Sidebar Alert Box */
-    .alert-box {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid #30363d;
-        border-radius: 8px;
-        padding: 10px;
-        margin-bottom: 8px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
     /* Watchlist Cards */
     .wl-card {
         background: #0d1117;
@@ -54,7 +42,7 @@ st.markdown("""
     .alert-trend { border: 2px solid #3fb950 !important; }
     .alert-breakout { border: 2px solid #2563eb !important; }
 
-    /* Forceer witte knoptekst voor kruisjes */
+    /* Buttons */
     button[kind="secondary"] { color: white !important; border-color: #444 !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -91,26 +79,24 @@ def get_analysis(ticker_symbol):
                 "macd_bull": ml > sl, "ema_ok": price > e50, "change": change}
     except: return None
 
-# --- ALERTS GENEREREN ---
+# --- ALERTS GENERATOR ---
 for t in st.session_state.watchlist:
     res = get_analysis(t)
     if res:
         st.session_state.last_results[t] = res
-        # Check op momentum alert
         if res['score'] >= 85:
             msg = f"🔥 {t}: Momentum ({res['score']})"
-            if not any(a['msg'] == msg for a in st.session_state.active_alerts):
+            if not any(a.get('msg') == msg for a in st.session_state.active_alerts):
                 st.session_state.active_alerts.append({"id": str(uuid.uuid4()), "msg": msg, "color": "#d29922"})
-        # Check op signal alert
         if res['signal'] in ["BREAKOUT", "TREND"]:
             msg = f"📈 {t}: {res['signal']}!"
-            if not any(a['msg'] == msg for a in st.session_state.active_alerts):
+            if not any(a.get('msg') == msg for a in st.session_state.active_alerts):
                 st.session_state.active_alerts.append({"id": str(uuid.uuid4()), "msg": msg, "color": "#3fb950"})
 
 # --- UI: HEADER ---
 st.title("SST ELITE TERMINAL")
 c1, c2, c3 = st.columns([4, 1, 1.5])
-input_tickers = c1.text_input("", placeholder="Ticker toevoegen...", key="ticker_input").upper()
+input_tickers = c1.text_input("", placeholder="Quick Add...", key="ticker_input").upper()
 if c2.button("➕ ADD", use_container_width=True):
     if input_tickers:
         for t in [x.strip() for x in input_tickers.split(',')]:
@@ -118,7 +104,7 @@ if c2.button("➕ ADD", use_container_width=True):
         st.rerun()
 if c3.button("🔄 SYNC", use_container_width=True): st.rerun()
 
-# --- UI: KPI BAR ---
+# --- UI: MAIN KPI BAR ---
 active_data = st.session_state.last_results.get(st.session_state.current_ticker) or get_analysis(st.session_state.current_ticker)
 if active_data:
     s_val = active_data["score"]
@@ -132,8 +118,8 @@ if active_data:
     with k4: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Health</div><div class="kpi-value {"text-bull" if active_data["ema_ok"] else "text-bear"}">{"OK" if active_data["ema_ok"] else "WEAK"}</div></div>', unsafe_allow_html=True)
     with k5: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Signal</div><div class="kpi-value" style="color:white;">{active_data["signal"]}</div></div>', unsafe_allow_html=True)
 
-    # --- MAIN ROW: CHART (LEFT) & ALERTS (RIGHT) ---
-    st.write("") # Spatiëring
+    # --- MAIN ROW ---
+    st.write("")
     col_chart, col_alerts = st.columns([3, 1])
     
     with col_chart:
@@ -143,22 +129,29 @@ if active_data:
         components.html(tv_html, height=510)
     
     with col_alerts:
-        st.markdown('<p style="color:#8b949e; font-size:0.75rem; font-weight:bold; text-transform:uppercase; margin-bottom:10px;">Live Signals</p>', unsafe_allow_html=True)
-        # Scrollbare container met native Streamlit knoppen
+        al_h1, al_h2 = st.columns([2, 1])
+        al_h1.markdown('<p style="color:#8b949e; font-size:0.75rem; font-weight:bold; margin-top:5px;">LIVE SIGNALS</p>', unsafe_allow_html=True)
+        if al_h2.button("CLEAR", key="clear_all"):
+            st.session_state.active_alerts = []
+            st.rerun()
+
         alert_container = st.container(height=465, border=True)
         with alert_container:
             if not st.session_state.active_alerts:
-                st.write("Geen actieve meldingen.")
+                st.write("No active signals.")
             else:
-                # We gebruiken een kopie van de lijst om veilig te itereren tijdens het verwijderen
                 for a in list(st.session_state.active_alerts):
+                    # Foutbestendige check op 'color'
+                    text_color = a.get('color', '#8b949e')
+                    msg_text = a.get('msg', 'Unknown Alert')
+                    
                     msg_col, btn_col = st.columns([4, 1])
-                    msg_col.markdown(f'<div style="color:{a["color"]}; font-size:0.85rem; padding-top:5px;">{a["msg"]}</div>', unsafe_allow_html=True)
-                    if btn_col.button("✖", key=a['id'], help="Verwijder notificatie"):
-                        st.session_state.active_alerts = [item for item in st.session_state.active_alerts if item['id'] != a['id']]
+                    msg_col.markdown(f'<div style="color:{text_color}; font-size:0.82rem; padding-top:5px; font-weight:500;">{msg_text}</div>', unsafe_allow_html=True)
+                    if btn_col.button("✖", key=a.get('id', str(uuid.uuid4()))):
+                        st.session_state.active_alerts = [item for item in st.session_state.active_alerts if item.get('id') != a.get('id')]
                         st.rerun()
 
-# --- UI: WATCHLIST GRID ---
+# --- WATCHLIST GRID ---
 st.write("---")
 cols = st.columns(3)
 for idx, item in enumerate(st.session_state.watchlist):
