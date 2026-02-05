@@ -45,13 +45,9 @@ st.markdown("""
         font-size: 1.2rem;
     }
     
-    /* Fel witte tekst voor het label 'Score:' */
-    .score-label-white {
-        color: #ffffff !important;
-        font-weight: bold;
-    }
+    .score-label-white { color: #ffffff !important; font-weight: bold; }
 
-    /* Watchlist Buttons */
+    /* Buttons */
     .stButton > button {
         background-color: #1c2128 !important;
         color: #ffffff !important;
@@ -98,30 +94,27 @@ def get_analysis(ticker_symbol):
                 "macd_bull": ml > sl, "ema_ok": price > e50, "change": change}
     except: return None
 
-# --- PRE-RUN SYNC ---
+# --- SYNC DATA ---
 for t in st.session_state.watchlist:
     res = get_analysis(t)
     if res: st.session_state.last_results[t] = res
 
-# --- UI: HEADER ---
+# --- HEADER ---
 st.title("SST ELITE TERMINAL")
 c1, c2, c3 = st.columns([4, 1, 1.5])
 input_tickers = c1.text_input("", placeholder="Ticker toevoegen...", key="ticker_input").upper()
 
 if c2.button("➕ ADD", use_container_width=True):
     if input_tickers:
-        new_tickers = [x.strip() for x in input_tickers.split(',')]
-        for t in new_tickers:
-            if t not in st.session_state.watchlist:
-                st.session_state.watchlist.append(t)
-        st.session_state.current_ticker = new_tickers[-1]
+        new_list = [x.strip() for x in input_tickers.split(',')]
+        for t in new_list:
+            if t not in st.session_state.watchlist: st.session_state.watchlist.append(t)
+        st.session_state.current_ticker = new_list[-1]
         st.rerun()
-
 if c3.button("🔄 SYNC", use_container_width=True): st.rerun()
 
-# --- UI: MAIN KPI BAR ---
+# --- MAIN KPI BAR ---
 active_data = get_analysis(st.session_state.current_ticker)
-
 if active_data:
     s_val = active_data["score"]
     s_class = "score-high" if s_val >= 60 else "score-mid" if s_val >= 40 else "score-low"
@@ -134,47 +127,26 @@ if active_data:
     with k4: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Health</div><div class="kpi-value {"text-bull" if active_data["ema_ok"] else "text-bear"}">{"OK" if active_data["ema_ok"] else "WEAK"}</div></div>', unsafe_allow_html=True)
     with k5: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Signal</div><div class="kpi-value" style="color:white;">{active_data["signal"]}</div></div>', unsafe_allow_html=True)
 
-    # --- MAIN ROW ---
+    # --- CHART & ALERTS ---
     st.write("")
     col_chart, col_alerts = st.columns([3, 1])
-    
     with col_chart:
         tv_html = f"""<div id="tv-chart" style="height: 500px; border: 1px solid #30363d; border-radius: 12px;"></div>
         <script src="https://s3.tradingview.com/tv.js"></script>
         <script>new TradingView.widget({{"autosize": true, "symbol": "{active_data['symbol']}", "interval": "D", "theme": "dark", "container_id": "tv-chart"}});</script>"""
         components.html(tv_html, height=510)
-    
     with col_alerts:
         st.markdown('<p style="color:#8b949e; font-size:0.75rem; font-weight:bold; margin-bottom:10px;">LIVE SIGNALS</p>', unsafe_allow_html=True)
-        alert_container = st.container(height=465, border=True)
-        with alert_container:
-            all_alerts = []
+        with st.container(height=465, border=True):
+            found_alerts = False
             for item in st.session_state.watchlist:
-                res = st.session_state.last_results.get(item)
-                if res:
-                    if res['score'] >= 85: 
-                        all_alerts.append({"msg": f"🔥 {item}: Momentum ({res['score']})", "color": "#d29922"})
-                    if res['signal'] == "BREAKOUT": 
-                        all_alerts.append({"msg": f"📈 {item}: BREAKOUT!", "color": "#2563eb"})
-                    if res['signal'] == "TREND": 
-                        all_alerts.append({"msg": f"📈 {item}: TREND!", "color": "#3fb950"})
-            
-            if not all_alerts:
-                st.write("Scanning...")
-            else:
-                for a in all_alerts:
-                    st.markdown(f'<div style="color:{a["color"]}; font-size:0.85rem; padding:8px 0; border-bottom:1px solid #30363d; font-weight:600;">{a["msg"]}</div>', unsafe_allow_html=True)
-
-# --- WATCHLIST GRID ---
-st.write("---")
-cols = st.columns(3)
-for idx, item in enumerate(st.session_state.watchlist):
-    w = st.session_state.last_results.get(item)
-    if w:
-        sw_c = "score-high" if w['score'] >= 60 else "score-mid" if w['score'] >= 40 else "score-low"
-        price_c = "text-bull" if w['change'] >= 0 else "text-bear"
-        signal_c = "text-bull" if w['signal'] == "TREND" else "text-breakout" if w['signal'] == "BREAKOUT" else "color:#8b949e"
-        alert
+                r = st.session_state.last_results.get(item)
+                if r:
+                    if r['score'] >= 85:
+                        st.markdown(f'<div style="color:#d29922; font-size:0.85rem; padding:8px 0; border-bottom:1px solid #30363d; font-weight:600;">🔥 {item}: Momentum ({r["score"]})</div>', unsafe_allow_html=True)
+                        found_alerts = True
+                    if r['signal'] == "BREAKOUT":
+                        st.markdown(f'<div style="color:#2563eb; font-size:0.85rem; padding:8px 0; border-bottom:1px solid #30363
 
 
 
