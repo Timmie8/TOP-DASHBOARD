@@ -22,18 +22,13 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Audio helper
 def play_sound():
-    sound_html = """
-    <audio autoplay>
-    <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
-    </audio>
-    """
+    sound_html = """<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg"></audio>"""
     st.markdown(sound_html, unsafe_allow_html=True)
 
-# 2. State Management (Default Watchlist included here)
+# 2. State Management
 if 'watchlist' not in st.session_state:
-    st.session_state.watchlist = ["NVDA", "AAPL", "TSLA", "BTC-USD", "ETH-USD", "MSFT", "AMZN"]
+    st.session_state.watchlist = ["NVDA", "AAPL", "TSLA", "BTC-USD", "ETH-USD"]
 if 'current_ticker' not in st.session_state:
     st.session_state.current_ticker = "NVDA"
 if 'last_results' not in st.session_state:
@@ -70,7 +65,28 @@ def get_analysis(ticker_symbol):
         }
     except: return None
 
-# --- DATA REFRESH & ALERTS ---
+# --- UI: TOP BAR ---
+st.title("🚀 SST ELITE DASHBOARD")
+
+c1, c2, c3 = st.columns([4, 1, 1.5])
+input_tickers = c1.text_input("", placeholder="Add tickers (e.g., NVDA, AAPL)", key="ticker_input").upper()
+
+if c2.button("➕ ADD TICKERS", use_container_width=True):
+    if input_tickers:
+        new_tickers = [t.strip() for t in input_tickers.split(',') if t.strip()]
+        for t in new_tickers:
+            if t not in st.session_state.watchlist:
+                st.session_state.watchlist.append(t)
+        # Set the first newly added ticker as the active one
+        st.session_state.current_ticker = new_tickers[0]
+        st.rerun()
+
+if c3.button("🔍 SCAN & SORT", use_container_width=True):
+    st.session_state.watchlist.sort(key=lambda x: (st.session_state.last_results.get(x, {}).get('priority', 0), 
+                                                 st.session_state.last_results.get(x, {}).get('score', 0)), reverse=True)
+    st.rerun()
+
+# --- REFRESH DATA ---
 alerts = []
 play_alert = False
 for t in st.session_state.watchlist:
@@ -83,34 +99,17 @@ for t in st.session_state.watchlist:
             alerts.append(f"📈 **{t}**: {res['signal']} Signal!")
             play_alert = True
 
-if play_alert:
-    play_sound()
-
-# --- UI: TOP BAR ---
-st.title("🚀 SST ELITE DASHBOARD")
-
-# Banners for alerts
 if alerts:
-    for alert in alerts:
-        st.warning(alert)
+    for alert in alerts: st.warning(alert)
+if play_alert: play_sound()
 
-c1, c2, c3 = st.columns([4, 1, 1.5])
-input_tickers = c1.text_input("", placeholder="Add tickers (e.g., NVDA, AAPL, MSFT)", label_visibility="collapsed").upper()
-
-if c2.button("➕ ADD TICKERS", use_container_width=True):
-    if input_tickers:
-        new_list = [t.strip() for t in input_tickers.split(',') if t.strip()]
-        for t in new_list:
-            if t not in st.session_state.watchlist: st.session_state.watchlist.append(t)
-        st.rerun()
-
-if c3.button("🔍 SCAN & SORT", use_container_width=True):
-    st.session_state.watchlist.sort(key=lambda x: (st.session_state.last_results.get(x, {}).get('priority', 0), 
-                                                 st.session_state.last_results.get(x, {}).get('score', 0)), reverse=True)
-    st.rerun()
-
-# --- UI: MAIN KPI SECTION ---
+# --- UI: MAIN KPI & CHART ---
 active_data = st.session_state.last_results.get(st.session_state.current_ticker)
+
+# IF for some reason data isn't in last_results yet, fetch it manually
+if not active_data:
+    active_data = get_analysis(st.session_state.current_ticker)
+
 if active_data:
     k1, k2, k3, k4, k5 = st.columns(5)
     p_color = "#3fb950" if active_data['change'] >= 0 else "#f85149"
