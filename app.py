@@ -5,172 +5,158 @@ import pandas_ta as ta
 import pandas as pd
 
 # 1. Pagina Configuratie
-st.set_page_config(page_title="SST PRO TERMINAL", layout="wide")
+st.set_page_config(page_title="SST ELITE TERMINAL", layout="wide")
 
-# Uitgebreide CSS voor kleuren en layout
 st.markdown("""
     <style>
     .block-container { padding: 15px !important; background-color: #050608; }
-    .stMetric { background-color: #0d1117; border: 1px solid #30363d; padding: 15px; border-radius: 12px; }
-    /* Kleur-logica voor de tekst in metrics */
-    [data-testid="stMetricValue"] { font-size: 1.8rem !important; font-weight: 800; }
     
-    /* Tabel styling */
-    .watchlist-row { 
-        display: flex; align-items: center; padding: 12px; border-radius: 10px; 
-        margin-bottom: 8px; border: 1px solid #30363d; background-color: #0d1117;
+    /* KPI Kaarten */
+    .kpi-card {
+        background: linear-gradient(145deg, #0d1117, #161b22);
+        border: 1px solid #30363d;
+        padding: 15px;
+        border-radius: 12px;
+        text-align: center;
     }
-    .status-badge {
-        padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase;
+    .kpi-value { font-size: 1.6rem; font-weight: 900; color: #ffffff; }
+    .kpi-label { font-size: 0.75rem; color: #8b949e; text-transform: uppercase; }
+    
+    /* Compacte Watchlist */
+    .compact-row {
+        display: flex; align-items: center; padding: 4px 12px; border-radius: 6px; 
+        margin-bottom: 3px; min-height: 38px;
+    }
+    .status-text { font-weight: 800; font-size: 0.85rem; color: #ffffff; margin: 0; }
+    
+    /* Knoppen */
+    .stButton button { 
+        border-radius: 4px; padding: 0px 8px; font-size: 0.75rem; height: 30px;
+        background-color: #1f2937; color: white; border: none;
+    }
+    .scan-btn button {
+        background: linear-gradient(90deg, #2563eb, #3fb950) !important;
+        font-weight: bold !important; height: 40px !important; font-size: 1rem !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
 # 2. State Management
 if 'watchlist' not in st.session_state:
-    st.session_state.watchlist = ["NVDA", "AAPL", "BTC-USD", "ETH-USD", "TSLA"]
+    st.session_state.watchlist = ["NVDA", "AAPL", "BTC-USD", "ETH-USD", "TSLA", "MSFT", "AMZN"]
 if 'current_ticker' not in st.session_state:
     st.session_state.current_ticker = "NVDA"
 
 # 3. Analyse Functie
-def fetch_full_analysis(ticker_symbol):
+def get_analysis(ticker_symbol):
     try:
         df = yf.download(ticker_symbol, period="1y", interval="1d", progress=False, auto_adjust=True)
         if df.empty or len(df) < 200: return None
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
 
-        # Berekeningen
+        price = df['Close'].iloc[-1]
+        change = ((price - df['Close'].iloc[-2]) / df['Close'].iloc[-2]) * 100
         rsi = ta.rsi(df['Close'], length=14).iloc[-1]
         macd = ta.macd(df['Close'])
         ml, sl = macd.iloc[-1, 0], macd.iloc[-1, 2]
         e20, e50, e200 = ta.ema(df['Close'], 20).iloc[-1], ta.ema(df['Close'], 50).iloc[-1], ta.ema(df['Close'], 200).iloc[-1]
-        bb = ta.bbands(df['Close'], length=20)
-        upper_bb = bb.iloc[-1, 2]
-        price = df['Close'].iloc[-1]
-        prev_price = df['Close'].iloc[-2]
+        upper_bb = ta.bbands(df['Close'], length=20).iloc[-1, 2]
         vol_avg = df['Volume'].rolling(20).mean().iloc[-1]
         vol_curr = df['Volume'].iloc[-1]
 
-        # Notificatie condities
-        is_trend_green = (price > e20 and price > e50 and price > e200 and ml > sl and 40 <= rsi <= 60)
-        is_breakout_blue = (price > upper_bb and ml > sl and price > e50 and vol_curr > vol_avg)
-
-        signal = "NONE"
-        if is_trend_green: signal = "TREND GREEN"
-        elif is_breakout_blue: signal = "BREAKOUT BLUE"
+        score = max(min(int(50 + (change * 12)), 99), 5)
+        
+        signal_val = 0 # Voor sorteren: 2 = Breakout, 1 = Trend, 0 = None
+        signal_text = "NONE"
+        
+        if price > upper_bb and ml > sl and price > e50 and vol_curr > vol_avg:
+            signal_text = "BREAKOUT"; signal_val = 2
+        elif price > e20 and price > e50 and price > e200 and ml > sl and 40 <= rsi <= 60:
+            signal_text = "TREND"; signal_val = 1
 
         return {
-            "symbol": ticker_symbol, "price": price, "change": ((price - prev_price)/prev_price)*100,
+            "symbol": ticker_symbol, "price": price, "change": change, "score": score,
             "rsi": rsi, "macd_bull": ml > sl, "ema_ok": price > e20 and price > e50 and price > e200,
-            "bb_break": price > upper_bb, "signal": signal
+            "signal": signal_text, "priority": signal_val
         }
     except: return None
 
 # --- UI: TOP BAR ---
-st.title("🚀 SST PRO SMART TERMINAL")
-c_search, c_add = st.columns([4, 1])
-quick_ticker = c_search.text_input("Voeg Ticker toe of zoek direct", placeholder="Bijv. MSFT, TSLA...").upper()
+st.title("🚀 SST ELITE DASHBOARD")
+c1, c2, c3 = st.columns([4, 1, 1.5])
+quick_t = c1.text_input("", placeholder="Ticker toevoegen...", label_visibility="collapsed").upper()
 
-if c_add.button("➕ Toevoegen aan Lijst", use_container_width=True):
-    if quick_ticker and quick_ticker not in st.session_state.watchlist:
-        st.session_state.watchlist.append(quick_ticker)
-        st.session_state.current_ticker = quick_ticker
+if c2.button("➕ ADD", use_container_width=True):
+    if quick_t and quick_t not in st.session_state.watchlist:
+        st.session_state.watchlist.append(quick_t)
+        st.session_state.current_ticker = quick_t
         st.rerun()
-elif quick_ticker:
-    st.session_state.current_ticker = quick_ticker
 
-# --- UI: MAIN DASHBOARD ---
-active_ticker = st.session_state.current_ticker
-data = fetch_full_analysis(active_ticker)
+# --- SCAN & SORTEER FUNCTIE ---
+if c3.button("🔍 SCAN & SORTEER", use_container_width=True, help="Scan alle aandelen en zet alerts bovenaan"):
+    with st.spinner('Scanning portfolio...'):
+        results = []
+        for t in st.session_state.watchlist:
+            data = get_analysis(t)
+            if data: results.append(data)
+        
+        # Sorteer op priority (Signaal) en dan op Score
+        results.sort(key=lambda x: (x['priority'], x['score']), reverse=True)
+        st.session_state.watchlist = [x['symbol'] for x in results]
+        st.rerun()
 
-if data:
-    # Gekleurde Indicatoren boven de chart
-    m1, m2, m3, m4, m5 = st.columns(5)
-    
-    # Prijs met kleur
-    m1.metric("Prijs", f"${data['price']:.2f}", f"{data['change']:.2f}%")
-    
-    # RSI Kleur (Groen tussen 40-60)
-    rsi_color = "normal" if 40 <= data['rsi'] <= 60 else "inverse"
-    m2.metric("RSI (14)", f"{data['rsi']:.1f}", delta="OPTimaal" if 40 <= data['rsi'] <= 60 else None)
-    
-    # MACD Kleur
-    m3.metric("MACD", "BULLISH" if data['macd_bull'] else "BEARISH", 
-              delta="KOOP" if data['macd_bull'] else "VERKOOP", 
-              delta_color="normal" if data['macd_bull'] else "inverse")
-    
-    # EMA Cloud Kleur
-    m4.metric("EMA Cloud", "BOVEN" if data['ema_ok'] else "ONDER", 
-              delta="TREND OK" if data['ema_ok'] else "ZWAK",
-              delta_color="normal" if data['ema_ok'] else "inverse")
-    
-    # Signaal Badge
-    sig_label = data['signal']
-    m5.metric("Signaal", sig_label, 
-              delta="ACTIVE" if sig_label != "NONE" else None,
-              delta_color="off" if sig_label == "NONE" else "normal")
+# --- UI: KPI SECTIE ---
+active_data = get_analysis(st.session_state.current_ticker)
+if active_data:
+    k1, k2, k3, k4, k5 = st.columns(5)
+    with k1:
+        color = "#3fb950" if active_data['change'] > 0 else "#f85149"
+        st.markdown(f'<div class="kpi-card"><div class="kpi-label">Price</div><div class="kpi-value" style="color:{color}">${active_data["price"]:.2f}</div></div>', unsafe_allow_html=True)
+    with k2:
+        st.markdown(f'<div class="kpi-card"><div class="kpi-label">Score</div><div class="kpi-value">{active_data["score"]}</div></div>', unsafe_allow_html=True)
+    with k3:
+        color = "#3fb950" if active_data['macd_bull'] else "#8b949e"
+        st.markdown(f'<div class="kpi-card"><div class="kpi-label">MACD</div><div class="kpi-value" style="color:{color}">{"BULL" if active_data["macd_bull"] else "BEAR"}</div></div>', unsafe_allow_html=True)
+    with k4:
+        color = "#3fb950" if active_data['ema_ok'] else "#8b949e"
+        st.markdown(f'<div class="kpi-card"><div class="kpi-label">EMA</div><div class="kpi-value" style="color:{color}">{"OK" if active_data["ema_ok"] else "ZWAK"}</div></div>', unsafe_allow_html=True)
+    with k5:
+        sig = active_data['signal']
+        color = "#3fb950" if sig == "TREND" else "#2563eb" if sig == "BREAKOUT" else "#8b949e"
+        st.markdown(f'<div class="kpi-card"><div class="kpi-label">Signal</div><div class="kpi-value" style="color:{color}">{sig}</div></div>', unsafe_allow_html=True)
 
-    # TradingView Chart
     tv_html = f"""
-    <div id="tv-chart" style="height: 520px; border: 1px solid #30363d; border-radius: 12px; margin-top: 10px;"></div>
+    <div id="tv-chart" style="height: 480px; border: 1px solid #30363d; border-radius: 12px; margin-top: 15px;"></div>
     <script src="https://s3.tradingview.com/tv.js"></script>
-    <script>new TradingView.widget({{"autosize": true, "symbol": "{active_ticker}", "interval": "D", "theme": "dark", "container_id": "tv-chart"}});</script>
+    <script>new TradingView.widget({{"autosize": true, "symbol": "{active_data['symbol']}", "interval": "D", "theme": "dark", "container_id": "tv-chart"}});</script>
     """
-    components.html(tv_html, height=540)
+    components.html(tv_html, height=500)
 
-# --- UI: WATCHLIST ONDER CHART ---
-st.write("---")
-st.subheader("📋 Live Scanner & Watchlist")
-
-# Tabel Header
-h1, h2, h3, h4, h5, h6 = st.columns([1.5, 1, 1, 1, 2, 1])
-h1.caption("AANDEEL")
-h2.caption("PRIJS")
-h3.caption("RSI")
-h4.caption("MACD")
-h5.caption("STRATEGIE STATUS")
-h6.caption("ACTIE")
+# --- UI: COMPACT SCANNER ---
+st.write("### 📋 Watchlist Scanner")
+h1, h2, h3, h4 = st.columns([1, 1, 2, 0.5])
+h1.caption("TICKER")
+h2.caption("SCORE")
+h3.caption("ALERT STATUS")
 
 for item in st.session_state.watchlist:
-    w_data = fetch_full_analysis(item)
-    if w_data:
-        # Rij Styling op basis van signaal
-        border_color = "#30363d"
-        glow = "transparent"
-        if w_data['signal'] == "TREND GREEN": 
-            border_color = "#3fb950"; glow = "rgba(63, 185, 80, 0.05)"
-        elif w_data['signal'] == "BREAKOUT BLUE": 
-            border_color = "#2563eb"; glow = "rgba(37, 99, 235, 0.05)"
+    w = get_analysis(item)
+    if w:
+        border = "#30363d"; glow = "transparent"; alert_text = "NEUTRAL"
+        if w['signal'] == "TREND": border = "#3fb950"; glow = "rgba(63, 185, 80, 0.1)"; alert_text = "🟢 TREND ALERT"
+        elif w['signal'] == "BREAKOUT": border = "#2563eb"; glow = "rgba(37, 99, 235, 0.1)"; alert_text = "🔵 BREAKOUT ALERT"
 
-        st.markdown(f"""
-            <div style="display: flex; align-items: center; padding: 10px; border: 2px solid {border_color}; 
-            background-color: {glow}; border-radius: 10px; margin-bottom: 8px;">
-        """, unsafe_allow_html=True)
-        
-        r1, r2, r3, r4, r5, r6 = st.columns([1.5, 1, 1, 1, 2, 1])
-        
-        if r1.button(f"📊 {item}", key=f"v_{item}", use_container_width=True):
+        st.markdown(f'<div class="compact-row" style="border: 1px solid {border}; background-color: {glow};">', unsafe_allow_html=True)
+        r1, r2, r3, r4 = st.columns([1, 1, 2, 0.5])
+        if r1.button(f"{item}", key=f"sel_{item}", use_container_width=True):
             st.session_state.current_ticker = item
             st.rerun()
-            
-        r2.write(f"**${w_data['price']:.2f}**")
-        r3.write(f"{w_data['rsi']:.1f}")
-        r4.write("🟢" if w_data['macd_bull'] else "🔴")
-        
-        # Status tekst met kleur
-        status_txt = w_data['signal']
-        if status_txt == "TREND GREEN":
-            r5.markdown("<span style='color: #3fb950; font-weight: bold;'>✅ TREND CONFLUENCE</span>", unsafe_allow_html=True)
-        elif status_txt == "BREAKOUT BLUE":
-            r5.markdown("<span style='color: #2563eb; font-weight: bold;'>🚀 MOMENTUM BREAKOUT</span>", unsafe_allow_html=True)
-        else:
-            r5.write("Wachten op signaal...")
-
-        if r6.button("🗑️", key=f"d_{item}"):
+        r2.markdown(f"<p class='status-text' style='margin-top:5px;'>{w['score']}</p>", unsafe_allow_html=True)
+        r3.markdown(f"<p class='status-text' style='margin-top:5px; color:{border}'>{alert_text}</p>", unsafe_allow_html=True)
+        if r4.button("🗑️", key=f"del_{item}"):
             st.session_state.watchlist.remove(item)
             st.rerun()
-            
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
 
