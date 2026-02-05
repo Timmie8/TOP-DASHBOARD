@@ -7,20 +7,28 @@ import pandas as pd
 # 1. Pagina Configuratie
 st.set_page_config(page_title="SST PRO TERMINAL", layout="wide")
 
+# Uitgebreide CSS voor kleuren en layout
 st.markdown("""
     <style>
-    .block-container { padding: 10px !important; background-color: #050608; }
-    .stButton button { border-radius: 4px; height: auto; padding: 5px 10px; }
-    /* Signaal Kleuren voor de Tabel */
-    .row-green { border: 2px solid #3fb950 !important; background-color: rgba(63, 185, 80, 0.1); }
-    .row-blue { border: 2px solid #2563eb !important; background-color: rgba(37, 99, 235, 0.1); }
-    div[data-testid="stMetric"] { background-color: #0d1117; border: 1px solid #30363d; padding: 10px; border-radius: 10px; }
+    .block-container { padding: 15px !important; background-color: #050608; }
+    .stMetric { background-color: #0d1117; border: 1px solid #30363d; padding: 15px; border-radius: 12px; }
+    /* Kleur-logica voor de tekst in metrics */
+    [data-testid="stMetricValue"] { font-size: 1.8rem !important; font-weight: 800; }
+    
+    /* Tabel styling */
+    .watchlist-row { 
+        display: flex; align-items: center; padding: 12px; border-radius: 10px; 
+        margin-bottom: 8px; border: 1px solid #30363d; background-color: #0d1117;
+    }
+    .status-badge {
+        padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 # 2. State Management
 if 'watchlist' not in st.session_state:
-    st.session_state.watchlist = ["NVDA", "AAPL", "BTC-USD", "ETH-USD"]
+    st.session_state.watchlist = ["NVDA", "AAPL", "BTC-USD", "ETH-USD", "TSLA"]
 if 'current_ticker' not in st.session_state:
     st.session_state.current_ticker = "NVDA"
 
@@ -31,7 +39,7 @@ def fetch_full_analysis(ticker_symbol):
         if df.empty or len(df) < 200: return None
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
 
-        # Indicatoren berekenen
+        # Berekeningen
         rsi = ta.rsi(df['Close'], length=14).iloc[-1]
         macd = ta.macd(df['Close'])
         ml, sl = macd.iloc[-1, 0], macd.iloc[-1, 2]
@@ -43,12 +51,13 @@ def fetch_full_analysis(ticker_symbol):
         vol_avg = df['Volume'].rolling(20).mean().iloc[-1]
         vol_curr = df['Volume'].iloc[-1]
 
-        # Notificatie checks
-        signal = "None"
-        if price > e20 and price > e50 and price > e200 and ml > sl and 40 <= rsi <= 60:
-            signal = "Trend Green"
-        elif price > upper_bb and ml > sl and price > e50 and vol_curr > vol_avg:
-            signal = "Breakout Blue"
+        # Notificatie condities
+        is_trend_green = (price > e20 and price > e50 and price > e200 and ml > sl and 40 <= rsi <= 60)
+        is_breakout_blue = (price > upper_bb and ml > sl and price > e50 and vol_curr > vol_avg)
+
+        signal = "NONE"
+        if is_trend_green: signal = "TREND GREEN"
+        elif is_breakout_blue: signal = "BREAKOUT BLUE"
 
         return {
             "symbol": ticker_symbol, "price": price, "change": ((price - prev_price)/prev_price)*100,
@@ -57,79 +66,111 @@ def fetch_full_analysis(ticker_symbol):
         }
     except: return None
 
-# --- UI: TOP BAR (Search & Add) ---
-st.title("🚀 SST SMART TERMINAL")
-c_search, c_add, _ = st.columns([3, 1, 4])
-quick_ticker = c_search.text_input("Snelzoeken / Ticker invoegen", placeholder="Bijv. TSLA, MSFT, BTC-USD").upper()
+# --- UI: TOP BAR ---
+st.title("🚀 SST PRO SMART TERMINAL")
+c_search, c_add = st.columns([4, 1])
+quick_ticker = c_search.text_input("Voeg Ticker toe of zoek direct", placeholder="Bijv. MSFT, TSLA...").upper()
 
-if c_add.button("➕ Zet in Watchlist"):
+if c_add.button("➕ Toevoegen aan Lijst", use_container_width=True):
     if quick_ticker and quick_ticker not in st.session_state.watchlist:
         st.session_state.watchlist.append(quick_ticker)
         st.session_state.current_ticker = quick_ticker
         st.rerun()
-elif quick_ticker: # Direct chart updaten bij typen zonder per se toe te voegen
+elif quick_ticker:
     st.session_state.current_ticker = quick_ticker
 
 # --- UI: MAIN DASHBOARD ---
 active_ticker = st.session_state.current_ticker
-main_data = fetch_full_analysis(active_ticker)
+data = fetch_full_analysis(active_ticker)
 
-if main_data:
-    # Metrics Rij
+if data:
+    # Gekleurde Indicatoren boven de chart
     m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric("Prijs", f"${main_data['price']:.2f}", f"{main_data['change']:.2f}%")
-    m2.metric("RSI", f"{main_data['rsi']:.1f}")
-    m3.metric("MACD", "BULL" if main_data['macd_bull'] else "BEAR")
-    m4.metric("EMA Cloud", "BOVEN" if main_data['ema_ok'] else "ONDER")
-    m5.metric("Signaal", main_data['signal'])
+    
+    # Prijs met kleur
+    m1.metric("Prijs", f"${data['price']:.2f}", f"{data['change']:.2f}%")
+    
+    # RSI Kleur (Groen tussen 40-60)
+    rsi_color = "normal" if 40 <= data['rsi'] <= 60 else "inverse"
+    m2.metric("RSI (14)", f"{data['rsi']:.1f}", delta="OPTimaal" if 40 <= data['rsi'] <= 60 else None)
+    
+    # MACD Kleur
+    m3.metric("MACD", "BULLISH" if data['macd_bull'] else "BEARISH", 
+              delta="KOOP" if data['macd_bull'] else "VERKOOP", 
+              delta_color="normal" if data['macd_bull'] else "inverse")
+    
+    # EMA Cloud Kleur
+    m4.metric("EMA Cloud", "BOVEN" if data['ema_ok'] else "ONDER", 
+              delta="TREND OK" if data['ema_ok'] else "ZWAK",
+              delta_color="normal" if data['ema_ok'] else "inverse")
+    
+    # Signaal Badge
+    sig_label = data['signal']
+    m5.metric("Signaal", sig_label, 
+              delta="ACTIVE" if sig_label != "NONE" else None,
+              delta_color="off" if sig_label == "NONE" else "normal")
 
     # TradingView Chart
-    terminal_html = f"""
-    <div id="tv-chart" style="height: 500px; border: 1px solid #30363d; border-radius: 12px;"></div>
+    tv_html = f"""
+    <div id="tv-chart" style="height: 520px; border: 1px solid #30363d; border-radius: 12px; margin-top: 10px;"></div>
     <script src="https://s3.tradingview.com/tv.js"></script>
     <script>new TradingView.widget({{"autosize": true, "symbol": "{active_ticker}", "interval": "D", "theme": "dark", "container_id": "tv-chart"}});</script>
     """
-    components.html(terminal_html, height=520)
+    components.html(tv_html, height=540)
 
-# --- UI: LIVE WATCHLIST GRID ---
-st.write("### 📋 Watchlist Scanner")
-st.write("Klik op een ticker om de grafiek te laden.")
+# --- UI: WATCHLIST ONDER CHART ---
+st.write("---")
+st.subheader("📋 Live Scanner & Watchlist")
 
-# Header voor de lijst
-h1, h2, h3, h4, h5, h6 = st.columns([1, 1, 1, 1, 2, 1])
-h1.caption("TICKER")
+# Tabel Header
+h1, h2, h3, h4, h5, h6 = st.columns([1.5, 1, 1, 1, 2, 1])
+h1.caption("AANDEEL")
 h2.caption("PRIJS")
 h3.caption("RSI")
 h4.caption("MACD")
-h5.caption("STATUS")
+h5.caption("STRATEGIE STATUS")
 h6.caption("ACTIE")
 
 for item in st.session_state.watchlist:
     w_data = fetch_full_analysis(item)
     if w_data:
-        # Bepaal kleur op basis van signaal
-        bg_color = "transparent"
-        border = "1px solid #30363d"
-        if w_data['signal'] == "Trend Green": 
-            bg_color = "rgba(63, 185, 80, 0.1)"; border = "2px solid #3fb950"
-        elif w_data['signal'] == "Breakout Blue": 
-            bg_color = "rgba(37, 99, 235, 0.1)"; border = "2px solid #2563eb"
+        # Rij Styling op basis van signaal
+        border_color = "#30363d"
+        glow = "transparent"
+        if w_data['signal'] == "TREND GREEN": 
+            border_color = "#3fb950"; glow = "rgba(63, 185, 80, 0.05)"
+        elif w_data['signal'] == "BREAKOUT BLUE": 
+            border_color = "#2563eb"; glow = "rgba(37, 99, 235, 0.05)"
 
-        # Maak een container voor de rij
-        with st.container():
-            st.markdown(f'<div style="background-color: {bg_color}; border: {border}; padding: 10px; border-radius: 8px; margin-bottom: 5px;">', unsafe_allow_html=True)
-            r1, r2, r3, r4, r5, r6 = st.columns([1, 1, 1, 1, 2, 1])
-            if r1.button(f"📊 {item}", key=f"sel_{item}"):
-                st.session_state.current_ticker = item
-                st.rerun()
-            r2.write(f"${w_data['price']:.2f}")
-            r3.write(f"{w_data['rsi']:.1f}")
-            r4.write("✅" if w_data['macd_bull'] else "❌")
-            r5.write(f"**{w_data['signal']}**")
-            if r6.button("🗑️", key=f"del_{item}"):
-                st.session_state.watchlist.remove(item)
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown(f"""
+            <div style="display: flex; align-items: center; padding: 10px; border: 2px solid {border_color}; 
+            background-color: {glow}; border-radius: 10px; margin-bottom: 8px;">
+        """, unsafe_allow_html=True)
+        
+        r1, r2, r3, r4, r5, r6 = st.columns([1.5, 1, 1, 1, 2, 1])
+        
+        if r1.button(f"📊 {item}", key=f"v_{item}", use_container_width=True):
+            st.session_state.current_ticker = item
+            st.rerun()
+            
+        r2.write(f"**${w_data['price']:.2f}**")
+        r3.write(f"{w_data['rsi']:.1f}")
+        r4.write("🟢" if w_data['macd_bull'] else "🔴")
+        
+        # Status tekst met kleur
+        status_txt = w_data['signal']
+        if status_txt == "TREND GREEN":
+            r5.markdown("<span style='color: #3fb950; font-weight: bold;'>✅ TREND CONFLUENCE</span>", unsafe_allow_html=True)
+        elif status_txt == "BREAKOUT BLUE":
+            r5.markdown("<span style='color: #2563eb; font-weight: bold;'>🚀 MOMENTUM BREAKOUT</span>", unsafe_allow_html=True)
+        else:
+            r5.write("Wachten op signaal...")
+
+        if r6.button("🗑️", key=f"d_{item}"):
+            st.session_state.watchlist.remove(item)
+            st.rerun()
+            
+        st.markdown("</div>", unsafe_allow_html=True)
 
 
 
