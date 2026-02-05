@@ -3,6 +3,7 @@ import streamlit.components.v1 as components
 import yfinance as yf
 import pandas_ta as ta
 import pandas as pd
+import time
 
 # 1. Page Configuration
 st.set_page_config(page_title="SST ELITE TERMINAL", layout="wide")
@@ -23,7 +24,7 @@ st.markdown("""
     .kpi-value { font-size: 1.8rem; font-weight: 800; letter-spacing: -1px; }
     .kpi-label { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
 
-    /* Professional Watchlist Grid Cards */
+    /* Watchlist Grid Cards */
     .wl-card {
         background: #0d1117;
         border: 1px solid #30363d;
@@ -33,7 +34,7 @@ st.markdown("""
         transition: transform 0.2s;
     }
     
-    /* Alert Borders (Dynamic Glow) */
+    /* Alert Borders & Glow */
     .alert-trend { 
         border: 2px solid #3fb950 !important; 
         box-shadow: 0 0 15px rgba(63, 185, 80, 0.4); 
@@ -47,7 +48,7 @@ st.markdown("""
     .wl-symbol { font-size: 1.2rem; font-weight: 900; color: #ffffff; }
     .wl-price { font-family: 'Courier New', monospace; font-weight: 700; font-size: 1.1rem; }
     
-    /* Dynamic Score Colors */
+    /* Score Colors */
     .score-high { color: #3fb950 !important; text-shadow: 0 0 10px rgba(63, 185, 80, 0.4); }
     .score-mid { color: #d29922 !important; text-shadow: 0 0 10px rgba(210, 153, 34, 0.4); }
     .score-low { color: #f85149 !important; text-shadow: 0 0 10px rgba(248, 81, 73, 0.4); }
@@ -72,7 +73,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Audio helper function
+# Audio helper
 def play_notification_sound():
     sound_html = """
     <audio autoplay>
@@ -121,28 +122,36 @@ def get_analysis(ticker_symbol):
     except: return None
 
 # --- SYNC DATA & ALERTS ---
-alerts = []
+active_alerts = []
 trigger_sound = False
+
 for t in st.session_state.watchlist:
     res = get_analysis(t)
     if res: 
         st.session_state.last_results[t] = res
-        if res['score'] >= 90: alerts.append(f"🔥 **{t}**: Extreme Momentum ({res['score']})")
+        if res['score'] >= 90:
+            active_alerts.append({"msg": f"🔥 {t}: Extreme Momentum ({res['score']})", "type": "warning"})
         if res['signal'] in ["BREAKOUT", "TREND"]:
-            alerts.append(f"📈 **{t}**: {res['signal']} Signal!")
+            active_alerts.append({"msg": f"📈 {t}: {res['signal']} Signal Detected!", "type": "success"})
             trigger_sound = True
 
-# Play sound if signals are detected
-if trigger_sound:
-    play_notification_sound()
-
-# --- UI: HEADER ---
+# --- UI: HEADER & LONG NOTIFICATIONS ---
 st.title("SST ELITE TERMINAL")
-if alerts:
-    for alert in alerts: st.toast(alert)
 
+# Deze banners blijven staan zolang de conditie waar is (veel langer dan 20 sec)
+if active_alerts:
+    for alert in active_alerts:
+        if alert["type"] == "warning":
+            st.warning(alert["msg"])
+        else:
+            st.success(alert["msg"])
+    
+    if trigger_sound:
+        play_notification_sound()
+
+# --- UI: CONTROLS ---
 c1, c2, c3 = st.columns([4, 1, 1.5])
-input_tickers = c1.text_input("", placeholder="Quick Add (e.g. MSFT, AMZN)", key="ticker_input").upper()
+input_tickers = c1.text_input("", placeholder="Quick Add Tickers", key="ticker_input").upper()
 
 if c2.button("➕ ADD", use_container_width=True):
     if input_tickers:
@@ -184,7 +193,6 @@ cols = st.columns(3)
 for idx, item in enumerate(st.session_state.watchlist):
     w = st.session_state.last_results.get(item)
     if w:
-        # Bepaal alert rand
         alert_class = ""
         if w['signal'] == "TREND": alert_class = "alert-trend"
         elif w['signal'] == "BREAKOUT": alert_class = "alert-breakout"
@@ -192,7 +200,6 @@ for idx, item in enumerate(st.session_state.watchlist):
         b_class = "badge-trend" if w['signal'] == "TREND" else "badge-breakout" if w['signal'] == "BREAKOUT" else "badge-none"
         p_clr = "#3fb950" if w['change'] >= 0 else "#f85149"
         
-        # Kleur voor score
         sw_val = w['score']
         sw_class = "score-high" if sw_val >= 60 else "score-mid" if sw_val >= 40 else "score-low"
         
@@ -210,7 +217,6 @@ for idx, item in enumerate(st.session_state.watchlist):
                 </div>
                 """, unsafe_allow_html=True)
             
-            # Action Buttons
             btn1, btn2 = st.columns(2)
             if btn1.button("VIEW", key=f"v_{item}"):
                 st.session_state.current_ticker = item
