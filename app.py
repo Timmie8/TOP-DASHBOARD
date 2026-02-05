@@ -164,6 +164,7 @@ if active_data:
 
 # --- UI: WATCHLIST GRID ---
 st.write("---")
+st.subheader("Watchlist Monitor")
 cols = st.columns(3)
 for idx, item in enumerate(st.session_state.watchlist):
     w = st.session_state.last_results.get(item)
@@ -173,7 +174,27 @@ for idx, item in enumerate(st.session_state.watchlist):
         sw_c = "score-high" if w['score'] >= 60 else "score-mid" if w['score'] >= 40 else "score-low"
         price_c = "text-bull" if w['change'] >= 0 else "text-bear"
         
-        with
+        with cols[idx % 3]:
+            st.markdown(f"""
+                <div class="wl-card {alert_c}">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <b style="font-size:1.1rem;">{item}</b>
+                        <span class="badge {badge_c}">{w['signal']}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-top:12px;">
+                        <span class="{price_c}" style="font-family:monospace; font-weight:bold;">${w['price']:.2f}</span>
+                        <span style="color:#8b949e; font-size:0.8rem;">Score: <b class="{sw_c}">{w['score']}</b></span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            b1, b2 = st.columns(2)
+            if b1.button("VIEW", key=f"v_{item}"): 
+                st.session_state.current_ticker = item
+                st.rerun()
+            if b2.button("DEL", key=f"d_{item}"): 
+                st.session_state.watchlist.remove(item)
+                st.rerun()
+
 
 
 
