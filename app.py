@@ -57,6 +57,12 @@ st.markdown("""
         padding: 15px;
         margin-bottom: 5px;
     }
+    /* Fel witte tekst voor symbolen in watchlist */
+    .wl-card b { 
+        color: #ffffff !important; 
+        text-shadow: 0px 0px 5px rgba(255,255,255,0.2);
+    }
+    
     .alert-trend { border: 2px solid #3fb950 !important; box-shadow: 0 0 12px rgba(63, 185, 80, 0.4); }
     .alert-breakout { border: 2px solid #2563eb !important; box-shadow: 0 0 12px rgba(37, 99, 235, 0.4); }
 
@@ -65,7 +71,7 @@ st.markdown("""
     .badge-breakout { background: rgba(37, 99, 235, 0.15); color: #2563eb; border: 1px solid #2563eb; }
     .badge-none { background: rgba(139, 148, 158, 0.1); color: #8b949e; border: 1px solid #30363d; }
     
-    .stButton button { background-color: #21262d; border: 1px solid #30363d; font-size: 0.7rem; height: 30px; }
+    .stButton button { background-color: #21262d; border: 1px solid #30363d; font-size: 0.7rem; height: 30px; color: white; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -120,6 +126,7 @@ if c2.button("➕ ADD", use_container_width=True):
     if input_tickers:
         for t in [x.strip() for x in input_tickers.split(',')]:
             if t not in st.session_state.watchlist: st.session_state.watchlist.append(t)
+        st.session_state.current_ticker = input_tickers.split(',')[0].strip()
         st.rerun()
 if c3.button("🔄 SYNC", use_container_width=True): st.rerun()
 
