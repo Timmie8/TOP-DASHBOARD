@@ -6,7 +6,7 @@ import pandas as pd
 import os
 from datetime import datetime
 
-# 1. Page Configuration
+# 1. Pagina Configuratie
 st.set_page_config(page_title="SST ELITE TERMINAL", layout="wide")
 
 WATCHLIST_FILE = "watchlist_data.csv"
@@ -26,7 +26,7 @@ st.markdown("""
     <style>
     .block-container { padding: 1rem !important; background-color: #050608; }
     .kpi-card { background: linear-gradient(145deg, #0d1117, #161b22); border: 1px solid #30363d; padding: 15px; border-radius: 12px; text-align: center; }
-    .kpi-value { font-size: 1.6rem; font-weight: 800; }
+    .kpi-value { font-size: 1.6rem; font-weight: 800; color: white; }
     .kpi-label { font-size: 0.65rem; color: #8b949e; text-transform: uppercase; }
     .score-high { color: #3fb950 !important; text-shadow: 0 0 12px rgba(63, 185, 80, 0.6); }
     .score-mid { color: #d29922 !important; text-shadow: 0 0 10px rgba(210, 153, 34, 0.6); }
@@ -40,14 +40,7 @@ st.markdown("""
     }
     @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
     .wl-card { background: #0d1117; border: 1px solid #30363d; border-radius: 12px; padding: 15px; margin-bottom: 5px; }
-    .score-label-white { color: #ffffff !important; font-weight: bold; }
     .stButton > button { background-color: #1c2128 !important; color: #ffffff !important; border: 1px solid #444c56 !important; }
-    
-    /* Guide Styling */
-    .guide-box { background: #0d1117; border: 1px solid #30363d; padding: 30px; border-radius: 15px; line-height: 1.8; color: #e6edf3; }
-    .guide-header { color: #58a6ff; font-size: 1.8rem; font-weight: bold; margin-bottom: 20px; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
-    .guide-sub { color: #f0883e; font-size: 1.2rem; font-weight: bold; margin-top: 20px; }
-    .highlight { color: #3fb950; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -82,37 +75,48 @@ def get_analysis(ticker_symbol):
                 "macd_bull": ml > sl, "ema_ok": price > e50, "change": change, "earnings": earn_date}
     except: return None
 
-# --- SIDEBAR NAVIGATION ---
+# --- NAVIGATIE LOGICA ---
+if 'page_selection' not in st.session_state:
+    st.session_state.page_selection = "Elite Terminal"
+
+def switch_page(page_name):
+    st.session_state.page_selection = page_name
+    st.rerun()
+
+# Sidebar menu
 with st.sidebar:
     st.title("SST NAVIGATION")
-    page = st.radio("Go to:", ["Elite Terminal", "User Guide"])
+    # De radiobutton wordt gekoppeld aan de session_state
+    page_options = ["Elite Terminal", "User Guide"]
+    page = st.radio("Go to:", page_options, index=page_options.index(st.session_state.page_selection), key="nav_radio")
+    st.session_state.page_selection = page
     st.write("---")
-    st.info("v2.2 - Official SST Release")
+    st.info("v2.4 - Official Release")
 
 # --- PAGE 1: TERMINAL ---
-if page == "Elite Terminal":
-    # 1. Bovenaan de site voegen we een knop toe in de header
+if st.session_state.page_selection == "Elite Terminal":
+    # Header met Help knop
     head_col1, head_col2 = st.columns([5, 1])
     with head_col1:
         st.title("SST ELITE TERMINAL")
     with head_col2:
-        # Een knop die de 'page' radiobutton in de sidebar forceert naar 'User Guide'
+        st.write("") # Padding
         if st.button("📖 HELP / GUIDE", use_container_width=True):
-            # Let op: de key van de radiobutton moet overeenkomen of we gebruiken een rerun
-            st.session_state.page_selection = "User Guide" # We voegen een helper toe aan de sidebar radio
-            st.rerun()
+            switch_page("User Guide")
 
-    # De rest van je bestaande Terminal code...
+    # Watchlist initialisatie
     if 'watchlist' not in st.session_state: st.session_state.watchlist = load_watchlist()
-    # ... (input velden, kpi's, etc.)
+    if 'current_ticker' not in st.session_state: st.session_state.current_ticker = st.session_state.watchlist[0]
+    if 'last_results' not in st.session_state: st.session_state.last_results = {}
 
+    # Data ophalen
     for t in st.session_state.watchlist:
         res = get_analysis(t)
         if res: st.session_state.last_results[t] = res
 
-    st.title("SST ELITE TERMINAL")
+    # Zoekbalk en Knoppen
     c1, c2, c3 = st.columns([4, 1, 1.5])
-    input_tickers = c1.text_input("", placeholder="Ticker toevoegen (bijv. NVDA, AAPL)...", key="ticker_input").upper()
+    input_tickers = c1.text_input("", placeholder="Ticker toevoegen...", key="ticker_input").upper()
 
     if c2.button("➕ ADD", use_container_width=True):
         if input_tickers:
@@ -126,25 +130,27 @@ if page == "Elite Terminal":
 
     active_data = st.session_state.last_results.get(st.session_state.current_ticker)
     if active_data:
-        # (KPI, Chart en Watchlist sectie blijft hier staan zoals in de vorige werkende code...)
-        # Om de code kort te houden voor dit overzicht, heb ik de weergave-logica hieronder behouden
         today = datetime.now().date()
         earn_str = "N/A"
         raw_earn = active_data.get("earnings")
         if raw_earn:
             earn_date = raw_earn.date() if hasattr(raw_earn, 'date') else raw_earn
             earn_str = earn_date.strftime("%d %b")
-            days_diff = (earn_date - today).days
-            if 0 <= days_diff <= 2:
-                st.markdown(f'<div class="earnings-imminent">⚠️ EARNINGS WAARSCHUWING: {active_data["symbol"]} over {days_diff} dag(en) ({earn_str})</div>', unsafe_allow_html=True)
+            if 0 <= (earn_date - today).days <= 2:
+                st.markdown(f'<div class="earnings-imminent">⚠️ EARNINGS WAARSCHUWING: {active_data["symbol"]} ({earn_str})</div>', unsafe_allow_html=True)
 
+        # KPI Rij
+        s_val = active_data["score"]
+        s_class = "score-high" if s_val >= 60 else "score-mid" if s_val >= 40 else "score-low"
+        
         k1, k2, k3, k4, k5 = st.columns(5)
-        with k1: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Price</div><div class="kpi-value">S{active_data["price"]:.2f}</div></div>', unsafe_allow_html=True)
-        with k2: st.markdown(f'<div class="kpi-card"><div class="kpi-label">AI Score</div><div class="kpi-value score-high">{active_data["score"]}</div></div>', unsafe_allow_html=True)
-        with k3: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Earnings</div><div class="kpi-value">{earn_str}</div></div>', unsafe_allow_html=True)
+        with k1: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Price</div><div class="kpi-value">${active_data["price"]:.2f}</div></div>', unsafe_allow_html=True)
+        with k2: st.markdown(f'<div class="kpi-card"><div class="kpi-label">AI Score</div><div class="kpi-value {s_class}">{s_val}</div></div>', unsafe_allow_html=True)
+        with k3: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Earnings</div><div class="kpi-value" style="font-size:1.1rem;">{earn_str}</div></div>', unsafe_allow_html=True)
         with k4: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Health</div><div class="kpi-value">{"OK" if active_data["ema_ok"] else "WEAK"}</div></div>', unsafe_allow_html=True)
         with k5: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Signal</div><div class="kpi-value">{active_data["signal"]}</div></div>', unsafe_allow_html=True)
 
+        # Chart
         st.write("")
         col_chart, col_alerts = st.columns([3, 1])
         with col_chart:
@@ -158,11 +164,10 @@ if page == "Elite Terminal":
             with st.container(height=465, border=True):
                 for item in st.session_state.watchlist:
                     r = st.session_state.last_results.get(item)
-                    if r:
-                        if r['score'] >= 85: st.markdown(f'<div style="color:#d29922; font-size:0.8rem; padding:5px 0; border-bottom:1px solid #333;">🔥 {item}: Momentum</div>', unsafe_allow_html=True)
-                        if r['signal'] != "NONE": st.markdown(f'<div style="color:#3fb950; font-size:0.8rem; padding:5px 0; border-bottom:1px solid #333;">📈 {item}: {r["signal"]}</div>', unsafe_allow_html=True)
+                    if r and r['score'] >= 85: 
+                        st.markdown(f'<div style="color:#d29922; font-size:0.8rem; padding:5px 0; border-bottom:1px solid #333;">🔥 {item}: Momentum</div>', unsafe_allow_html=True)
 
-    # Watchlist Grid...
+    # Watchlist Grid
     st.write("---")
     cols = st.columns(3)
     for idx, item in enumerate(st.session_state.watchlist):
@@ -170,13 +175,21 @@ if page == "Elite Terminal":
         if w:
             with cols[idx % 3]:
                 st.markdown(f'<div class="wl-card"><b>{item}</b><br>Score: <span class="score-high">{w["score"]}</span></div>', unsafe_allow_html=True)
-                if st.button(f"VIEW {item}", key=f"view_{item}"):
+                b_view, b_del = st.columns(2)
+                if b_view.button("VIEW", key=f"v_{item}", use_container_width=True):
                     st.session_state.current_ticker = item
+                    st.rerun()
+                if b_del.button("DEL", key=f"d_{item}", use_container_width=True):
+                    st.session_state.watchlist.remove(item)
+                    save_watchlist(st.session_state.watchlist)
                     st.rerun()
 
 # --- PAGE 2: USER GUIDE ---
-elif page == "User Guide":
-    st.title("📖 SST User Guide")
+elif st.session_state.page_selection == "User Guide":
+    c1, c2 = st.columns([5, 1])
+    c1.title("📖 SST User Guide")
+    if c2.button("🔙 BACK", use_container_width=True):
+        switch_page("Elite Terminal")
     
     st.info("Follow the instructions below to get the most out of the SST Elite Terminal.")
 
@@ -219,7 +232,9 @@ elif page == "User Guide":
     st.divider()
     st.markdown("### *Good luck with the terminal.*")
     st.markdown("**Team SST (Swingstocktraders)**")
-
+    
+    if st.button("Return to Terminal", type="primary"):
+        switch_page("Elite Terminal")
 
 
 
