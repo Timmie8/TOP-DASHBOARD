@@ -165,49 +165,50 @@ if page == "Elite Terminal":
 
 # --- PAGE 2: USER GUIDE ---
 elif page == "User Guide":
-    st.title("📖 SST USER GUIDE")
+    st.title("📖 SST User Guide")
     
-    # De tekst wordt hier gecombineerd in één grote HTML-string voor een strak uiterlijk
-    guide_html = """
-    <div style="background: #0d1117; border: 1px solid #30363d; padding: 30px; border-radius: 15px; line-height: 1.8; color: #e6edf3; font-family: sans-serif;">
-        <h2 style="color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 10px;">Explanation of the SST Elite Terminal</h2>
-        
-        <p>At the top of the panel, you can select a stock of your choice. The system will then immediately analyze the stock and provide a score.</p>
-        
-        <h3 style="color: #f0883e; margin-top: 25px;">1. AI Score & Health</h3>
-        <p>The first box shows the <span style="color: #3fb950; font-weight: bold;">AI Score</span>. 
-        The AI method behind this score evaluates the short-term potential of the stock. 
+    st.info("Follow the instructions below to get the most out of the SST Elite Terminal.")
+
+    st.header("Explanation of the SST Elite Terminal")
+    st.write("At the top of the panel, you can select a stock of your choice. The system will then immediately analyze the stock and provide a score.")
+
+    with st.expander("1. AI Score & Health", expanded=True):
+        st.write("""
+        The first box shows the **AI Score**. The AI method behind this score evaluates the short-term potential of the stock. 
         The higher the score, the greater the chance that the stock will rise. 
-        Under <b>Health</b>, you will find the strength of the overall technical analysis that supports this score.</p>
         
-        <h3 style="color: #f0883e; margin-top: 25px;">2. Active Signals</h3>
-        <p>Under <b>Signal</b>, you will see the active signal if one is available, for example a <b>Breakout</b>.</p>
+        Under **Health**, you will find the strength of the overall technical analysis that supports this score.
+        """)
+
+    with st.expander("2. Active Signals", expanded=True):
+        st.write("""
+        Under **Signal**, you will see the active signal if one is available, for example a **Breakout**.
+        """)
+
+    with st.expander("3. How to use the Terminal", expanded=True):
+        st.write("""
+        You can use the terminal in two ways:
+        * By following the **AI Score**, or
+        * By using the **Signal**.
         
-        <h3 style="color: #f0883e; margin-top: 25px;">3. How to use the Terminal</h3>
-        <p>You can use the terminal in two ways:</p>
-        <ul style="margin-left: 20px;">
-            <li>By following the <b>AI Score</b>, or</li>
-            <li>By using the <b>Signal</b>.</li>
-        </ul>
-        <p>Of course, you can also choose to combine both for higher probability trades.</p>
-        
-        <h3 style="color: #f0883e; margin-top: 25px;">4. Watchlist & Sync</h3>
-        <p>When you press <b>Add</b>, the stock will be added to the watchlist below the chart. 
-        When you press the <b>Sync</b> button, the latest score is retrieved, ensuring that you are always up to date.</p>
-        
-        <h3 style="color: #f0883e; margin-top: 25px;">5. Live Alerts</h3>
-        <p>Next to the chart, you will also see the signals that are currently active in the <b>Signals & Calendar</b> section.</p>
-        
-        <br>
-        <p style="border-top: 1px solid #30363d; padding-top: 20px; font-style: italic;">
-            Good luck with the terminal.<br>
-            <strong style="color: #58a6ff;">Team SST (Swingstocktraders)</strong>
-        </p>
-    </div>
-    """
-    
-    # Dit is het cruciale onderdeel: dit zorgt dat de browser de HTML begrijpt
-    st.markdown(guide_html, unsafe_allow_html=True)
+        Of course, you can also choose to combine both for higher probability trades.
+        """)
+
+    with st.expander("4. Watchlist & Sync", expanded=True):
+        st.write("""
+        When you press **Add**, the stock will be added to the watchlist below the chart. 
+        When you press the **Sync** button, the latest score is retrieved, ensuring that you are always up to date.
+        """)
+
+    with st.expander("5. Live Alerts", expanded=True):
+        st.write("""
+        Next to the chart, you will also see the signals that are currently active in the **Signals & Calendar** section.
+        """)
+
+    st.divider()
+    st.markdown("### *Good luck with the terminal.*")
+    st.markdown("**Team SST (Swingstocktraders)**")
+
 
 
 
