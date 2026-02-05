@@ -57,7 +57,6 @@ st.markdown("""
         padding: 15px;
         margin-bottom: 5px;
     }
-    /* Fel witte tekst voor symbolen in watchlist */
     .wl-card b { 
         color: #ffffff !important; 
         text-shadow: 0px 0px 5px rgba(255,255,255,0.2);
@@ -98,10 +97,12 @@ def get_analysis(ticker_symbol):
         ml, sl = macd.iloc[-1, 0], macd.iloc[-1, 2]
         e20, e50, e200 = ta.ema(df['Close'], 20).iloc[-1], ta.ema(df['Close'], 50).iloc[-1], ta.ema(df['Close'], 200).iloc[-1]
         
-        score = max(min(int(50 + (change * 12)), 99), 5)
+        # Verbeterde score logica (max 100)
+        score = max(min(int(50 + (change * 12) + (rsi - 50) * 0.5), 100), 0)
+        
         signal_text = "NONE"
         if price > e50 and ml > sl: signal_text = "BREAKOUT"
-        elif price > e20 and ml > sl and 40 <= rsi <= 60: signal_text = "TREND"
+        elif price > e20 and ml > sl and 40 <= rsi <= 65: signal_text = "TREND"
             
         return {
             "symbol": ticker_symbol, "price": price, "score": score, "signal": signal_text, 
@@ -115,13 +116,13 @@ for t in st.session_state.watchlist:
     res = get_analysis(t)
     if res:
         st.session_state.last_results[t] = res
-        if res['score'] >= 90: active_alerts.append({"msg": f"🔥 {t}: Momentum Alert ({res['score']})", "type": "warning"})
+        if res['score'] >= 80: active_alerts.append({"msg": f"🔥 {t}: Momentum Alert ({res['score']})", "type": "warning"})
         if res['signal'] in ["BREAKOUT", "TREND"]: active_alerts.append({"msg": f"📈 {t}: {res['signal']} Signal!", "type": "success"})
 
 # --- UI: HEADER ---
 st.title("SST ELITE TERMINAL")
 c1, c2, c3 = st.columns([4, 1, 1.5])
-input_tickers = c1.text_input("", placeholder="Quick Add (e.g. MSFT, AMZN)", key="ticker_input").upper()
+input_tickers = c1.text_input("", placeholder="Quick Add Tickers...", key="ticker_input").upper()
 if c2.button("➕ ADD", use_container_width=True):
     if input_tickers:
         for t in [x.strip() for x in input_tickers.split(',')]:
@@ -134,7 +135,9 @@ if c3.button("🔄 SYNC", use_container_width=True): st.rerun()
 active_data = st.session_state.last_results.get(st.session_state.current_ticker) or get_analysis(st.session_state.current_ticker)
 if active_data:
     s_val = active_data["score"]
+    # Score kleur gelijk aan watchlist logica
     s_class = "score-high" if s_val >= 60 else "score-mid" if s_val >= 40 else "score-low"
+    
     macd_class = "text-bull" if active_data["macd_bull"] else "text-bear"
     ema_class = "text-bull" if active_data["ema_ok"] else "text-bear"
     price_class = "text-bull" if active_data["change"] >= 0 else "text-bear"
