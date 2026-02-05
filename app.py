@@ -3,7 +3,6 @@ import streamlit.components.v1 as components
 import yfinance as yf
 import pandas_ta as ta
 import pandas as pd
-import uuid
 
 # 1. Page Configuration
 st.set_page_config(page_title="SST ELITE TERMINAL", layout="wide")
@@ -38,12 +37,27 @@ st.markdown("""
         padding: 15px;
         margin-bottom: 5px;
     }
-    .wl-card b { color: #ffffff !important; text-shadow: 0px 0px 5px rgba(255,255,255,0.4); }
+    .wl-card b { 
+        color: #ffffff !important; 
+        text-shadow: 0px 0px 8px rgba(255,255,255,0.6);
+        font-size: 1.2rem;
+    }
+    
+    /* Watchlist Buttons - HERSTELD VOOR LEESBAARHEID */
+    .stButton > button {
+        background-color: #1c2128 !important;
+        color: #ffffff !important;
+        border: 1px solid #444c56 !important;
+        font-size: 0.75rem !important;
+        transition: all 0.2s;
+    }
+    .stButton > button:hover {
+        border-color: #8b949e !important;
+        background-color: #30363d !important;
+    }
+
     .alert-trend { border: 2px solid #3fb950 !important; }
     .alert-breakout { border: 2px solid #2563eb !important; }
-
-    /* Buttons */
-    button[kind="secondary"] { color: white !important; border-color: #444 !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -54,8 +68,6 @@ if 'current_ticker' not in st.session_state:
     st.session_state.current_ticker = "NVDA"
 if 'last_results' not in st.session_state:
     st.session_state.last_results = {}
-if 'active_alerts' not in st.session_state:
-    st.session_state.active_alerts = []
 
 # 3. Analysis Function
 @st.cache_data(ttl=15)
@@ -79,24 +91,21 @@ def get_analysis(ticker_symbol):
                 "macd_bull": ml > sl, "ema_ok": price > e50, "change": change}
     except: return None
 
-# --- ALERTS GENERATOR ---
+# --- ALERTS GENERATOR (EENVOUDIGE LIJST) ---
+active_alerts = []
 for t in st.session_state.watchlist:
     res = get_analysis(t)
     if res:
         st.session_state.last_results[t] = res
         if res['score'] >= 85:
-            msg = f"🔥 {t}: Momentum ({res['score']})"
-            if not any(a.get('msg') == msg for a in st.session_state.active_alerts):
-                st.session_state.active_alerts.append({"id": str(uuid.uuid4()), "msg": msg, "color": "#d29922"})
+            active_alerts.append({"msg": f"🔥 {t}: Momentum ({res['score']})", "color": "#d29922"})
         if res['signal'] in ["BREAKOUT", "TREND"]:
-            msg = f"📈 {t}: {res['signal']}!"
-            if not any(a.get('msg') == msg for a in st.session_state.active_alerts):
-                st.session_state.active_alerts.append({"id": str(uuid.uuid4()), "msg": msg, "color": "#3fb950"})
+            active_alerts.append({"msg": f"📈 {t}: {res['signal']}!", "color": "#3fb950"})
 
 # --- UI: HEADER ---
 st.title("SST ELITE TERMINAL")
 c1, c2, c3 = st.columns([4, 1, 1.5])
-input_tickers = c1.text_input("", placeholder="Quick Add...", key="ticker_input").upper()
+input_tickers = c1.text_input("", placeholder="Ticker toevoegen...", key="ticker_input").upper()
 if c2.button("➕ ADD", use_container_width=True):
     if input_tickers:
         for t in [x.strip() for x in input_tickers.split(',')]:
@@ -104,7 +113,7 @@ if c2.button("➕ ADD", use_container_width=True):
         st.rerun()
 if c3.button("🔄 SYNC", use_container_width=True): st.rerun()
 
-# --- UI: MAIN KPI BAR ---
+# --- UI: KPI BAR ---
 active_data = st.session_state.last_results.get(st.session_state.current_ticker) or get_analysis(st.session_state.current_ticker)
 if active_data:
     s_val = active_data["score"]
@@ -129,27 +138,14 @@ if active_data:
         components.html(tv_html, height=510)
     
     with col_alerts:
-        al_h1, al_h2 = st.columns([2, 1])
-        al_h1.markdown('<p style="color:#8b949e; font-size:0.75rem; font-weight:bold; margin-top:5px;">LIVE SIGNALS</p>', unsafe_allow_html=True)
-        if al_h2.button("CLEAR", key="clear_all"):
-            st.session_state.active_alerts = []
-            st.rerun()
-
+        st.markdown('<p style="color:#8b949e; font-size:0.75rem; font-weight:bold; margin-bottom:10px;">LIVE SIGNALS</p>', unsafe_allow_html=True)
         alert_container = st.container(height=465, border=True)
         with alert_container:
-            if not st.session_state.active_alerts:
-                st.write("No active signals.")
+            if not active_alerts:
+                st.write("Scanning...")
             else:
-                for a in list(st.session_state.active_alerts):
-                    # Foutbestendige check op 'color'
-                    text_color = a.get('color', '#8b949e')
-                    msg_text = a.get('msg', 'Unknown Alert')
-                    
-                    msg_col, btn_col = st.columns([4, 1])
-                    msg_col.markdown(f'<div style="color:{text_color}; font-size:0.82rem; padding-top:5px; font-weight:500;">{msg_text}</div>', unsafe_allow_html=True)
-                    if btn_col.button("✖", key=a.get('id', str(uuid.uuid4()))):
-                        st.session_state.active_alerts = [item for item in st.session_state.active_alerts if item.get('id') != a.get('id')]
-                        st.rerun()
+                for a in active_alerts:
+                    st.markdown(f'<div style="color:{a["color"]}; font-size:0.85rem; padding:8px 0; border-bottom:1px solid #30363d; font-weight:600;">{a["msg"]}</div>', unsafe_allow_html=True)
 
 # --- WATCHLIST GRID ---
 st.write("---")
@@ -163,14 +159,18 @@ for idx, item in enumerate(st.session_state.watchlist):
         
         with cols[idx % 3]:
             st.markdown(f"""<div class="wl-card {alert_c}">
-                <div style="display:flex; justify-content:space-between;"><b>{item}</b><span style="color:#8b949e; font-size:0.7rem;">{w['signal']}</span></div>
+                <div style="display:flex; justify-content:space-between;"><b>{item}</b><span style="color:#8b949e; font-size:0.75rem;">{w['signal']}</span></div>
                 <div style="display:flex; justify-content:space-between; margin-top:10px;">
-                    <span class="{price_c}">${w['price']:.2f}</span>
+                    <span class="{price_c}" style="font-weight:bold;">${w['price']:.2f}</span>
                     <span>Score: <b class="{sw_c}">{w['score']}</b></span>
                 </div></div>""", unsafe_allow_html=True)
             b1, b2 = st.columns(2)
-            if b1.button("VIEW", key=f"v_{item}"): st.session_state.current_ticker = item; st.rerun()
-            if b2.button("DEL", key=f"d_{item}"): st.session_state.watchlist.remove(item); st.rerun()
+            if b1.button("VIEW", key=f"v_{item}", use_container_width=True): 
+                st.session_state.current_ticker = item
+                st.rerun()
+            if b2.button("DEL", key=f"d_{item}", use_container_width=True): 
+                st.session_state.watchlist.remove(item)
+                st.rerun()
 
 
 
