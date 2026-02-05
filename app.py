@@ -9,16 +9,61 @@ st.set_page_config(page_title="SST ELITE TERMINAL", layout="wide")
 
 st.markdown("""
     <style>
-    .block-container { padding: 15px !important; background-color: #050608; }
-    .kpi-card { background: #0d1117; border: 1px solid #30363d; padding: 15px; border-radius: 12px; text-align: center; }
-    .kpi-value { font-size: 1.7rem; font-weight: 900; }
-    .kpi-label { font-size: 0.75rem; color: #8b949e; text-transform: uppercase; margin-bottom: 5px; }
-    .wl-box { background-color: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 12px; margin-bottom: 10px; min-height: 85px; }
-    .glow-green { border: 2px solid #3fb950 !important; box-shadow: 0 0 10px rgba(63, 185, 80, 0.4); animation: pulse-green 2s infinite; }
-    .glow-blue { border: 2px solid #2563eb !important; box-shadow: 0 0 10px rgba(37, 99, 235, 0.4); animation: pulse-blue 2s infinite; }
-    @keyframes pulse-green { 0% { box-shadow: 0 0 5px rgba(63, 185, 80, 0.2); } 50% { box-shadow: 0 0 15px rgba(63, 185, 80, 0.6); } 100% { box-shadow: 0 0 5px rgba(63, 185, 80, 0.2); } }
-    @keyframes pulse-blue { 0% { box-shadow: 0 0 5px rgba(37, 99, 235, 0.2); } 50% { box-shadow: 0 0 15px rgba(37, 99, 235, 0.6); } 100% { box-shadow: 0 0 5px rgba(37, 99, 235, 0.2); } }
-    .stButton button { border-radius: 4px; padding: 0px 5px; font-size: 0.75rem; height: 30px; }
+    .block-container { padding: 1.5rem !important; background-color: #050608; }
+    
+    /* KPI Cards Redesign */
+    .kpi-card {
+        background: linear-gradient(145deg, #0d1117, #161b22);
+        border: 1px solid #30363d;
+        padding: 20px;
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    .kpi-value { font-size: 1.8rem; font-weight: 800; letter-spacing: -1px; }
+    .kpi-label { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+
+    /* Professional Watchlist Table */
+    .wl-container {
+        background: #0d1117;
+        border: 1px solid #30363d;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-top: 10px;
+    }
+    .wl-row {
+        display: flex;
+        align-items: center;
+        padding: 12px 20px;
+        border-bottom: 1px solid #21262d;
+        transition: background 0.2s ease;
+    }
+    .wl-row:hover { background: #161b22; }
+    .wl-col-sym { flex: 1; font-weight: 700; color: #ffffff; font-size: 1.1rem; }
+    .wl-col-price { flex: 1; text-align: right; font-family: 'Courier New', monospace; font-weight: 600; }
+    .wl-col-score { flex: 1; text-align: center; }
+    .wl-col-sig { flex: 1; text-align: right; }
+    
+    /* Signal Badges */
+    .badge {
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        font-weight: 900;
+        text-transform: uppercase;
+    }
+    .badge-trend { background: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid #3fb950; }
+    .badge-breakout { background: rgba(37, 99, 235, 0.15); color: #2563eb; border: 1px solid #2563eb; }
+    .badge-none { background: rgba(139, 148, 158, 0.1); color: #8b949e; border: 1px solid #30363d; }
+    
+    /* Score Indicator dots */
+    .dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    
+    .stButton button { 
+        background-color: #21262d; border: 1px solid #30363d; color: #c9d1d9;
+        font-size: 0.7rem; height: 28px; transition: 0.2s;
+    }
+    .stButton button:hover { border-color: #8b949e; background: #30363d; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -65,27 +110,6 @@ def get_analysis(ticker_symbol):
         }
     except: return None
 
-# --- UI: TOP BAR ---
-st.title("🚀 SST ELITE DASHBOARD")
-
-c1, c2, c3 = st.columns([4, 1, 1.5])
-input_tickers = c1.text_input("", placeholder="Add tickers (e.g., NVDA, AAPL)", key="ticker_input").upper()
-
-if c2.button("➕ ADD TICKERS", use_container_width=True):
-    if input_tickers:
-        new_tickers = [t.strip() for t in input_tickers.split(',') if t.strip()]
-        for t in new_tickers:
-            if t not in st.session_state.watchlist:
-                st.session_state.watchlist.append(t)
-        # Set the first newly added ticker as the active one
-        st.session_state.current_ticker = new_tickers[0]
-        st.rerun()
-
-if c3.button("🔍 SCAN & SORT", use_container_width=True):
-    st.session_state.watchlist.sort(key=lambda x: (st.session_state.last_results.get(x, {}).get('priority', 0), 
-                                                 st.session_state.last_results.get(x, {}).get('score', 0)), reverse=True)
-    st.rerun()
-
 # --- REFRESH DATA ---
 alerts = []
 play_alert = False
@@ -93,70 +117,91 @@ for t in st.session_state.watchlist:
     res = get_analysis(t)
     if res: 
         st.session_state.last_results[t] = res
-        if res['score'] >= 90:
-            alerts.append(f"🔥 **{t}**: Extreme Momentum (Score: {res['score']})")
+        if res['score'] >= 90: alerts.append(f"🔥 **{t}**: Extreme Momentum ({res['score']})")
         if res['signal'] in ["BREAKOUT", "TREND"]:
-            alerts.append(f"📈 **{t}**: {res['signal']} Signal!")
+            alerts.append(f"📈 **{t}**: {res['signal']} Alert!")
             play_alert = True
 
+# --- UI: HEADER ---
+st.title("SST ELITE TERMINAL")
 if alerts:
-    for alert in alerts: st.warning(alert)
+    for alert in alerts: st.toast(alert)
 if play_alert: play_sound()
 
-# --- UI: MAIN KPI & CHART ---
-active_data = st.session_state.last_results.get(st.session_state.current_ticker)
+c1, c2, c3 = st.columns([4, 1, 1.5])
+input_tickers = c1.text_input("", placeholder="Quick Add (e.g. MSFT, AMZN, GOOGL)", key="ticker_input").upper()
 
-# IF for some reason data isn't in last_results yet, fetch it manually
-if not active_data:
-    active_data = get_analysis(st.session_state.current_ticker)
+if c2.button("➕ ADD", use_container_width=True):
+    if input_tickers:
+        new_tickers = [t.strip() for t in input_tickers.split(',') if t.strip()]
+        for t in new_tickers:
+            if t not in st.session_state.watchlist: st.session_state.watchlist.append(t)
+        st.session_state.current_ticker = new_tickers[0]
+        st.rerun()
+
+if c3.button("🔄 SYNC & SORT", use_container_width=True):
+    st.session_state.watchlist.sort(key=lambda x: (st.session_state.last_results.get(x, {}).get('priority', 0), 
+                                                 st.session_state.last_results.get(x, {}).get('score', 0)), reverse=True)
+    st.rerun()
+
+# --- UI: MAIN CHART ---
+active_data = st.session_state.last_results.get(st.session_state.current_ticker) or get_analysis(st.session_state.current_ticker)
 
 if active_data:
     k1, k2, k3, k4, k5 = st.columns(5)
-    p_color = "#3fb950" if active_data['change'] >= 0 else "#f85149"
-    s_color = "#3fb950" if active_data['score'] > 60 else "#d29922" if active_data['score'] >= 40 else "#f85149"
-    m_color = "#3fb950" if active_data['macd_bull'] else "#f85149"
-    e_color = "#3fb950" if active_data['ema_ok'] else "#f85149"
-    sig = active_data['signal']
-    sig_color = "#3fb950" if sig == "TREND" else "#2563eb" if sig == "BREAKOUT" else "#8b949e"
+    with k1: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Price</div><div class="kpi-value" style="color:{"#3fb950" if active_data["change"] >= 0 else "#f85149"}">${active_data["price"]:.2f}</div></div>', unsafe_allow_html=True)
+    with k2: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Momentum Score</div><div class="kpi-value">{active_data["score"]}</div></div>', unsafe_allow_html=True)
+    with k3: st.markdown(f'<div class="kpi-card"><div class="kpi-label">MACD</div><div class="kpi-value" style="color:{"#3fb950" if active_data["macd_bull"] else "#f85149"}">{"BULL" if active_data["macd_bull"] else "BEAR"}</div></div>', unsafe_allow_html=True)
+    with k4: st.markdown(f'<div class="kpi-card"><div class="kpi-label">EMA Stack</div><div class="kpi-value" style="color:{"#3fb950" if active_data["ema_ok"] else "#f85149"}">{"HEALTHY" if active_data["ema_ok"] else "WEAK"}</div></div>', unsafe_allow_html=True)
+    with k5: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Signal</div><div class="kpi-value" style="color:{"#3fb950" if active_data["signal"] != "NONE" else "#8b949e"}">{active_data["signal"]}</div></div>', unsafe_allow_html=True)
 
-    with k1: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Price</div><div class="kpi-value" style="color:{p_color}">${active_data["price"]:.2f}</div></div>', unsafe_allow_html=True)
-    with k2: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Score</div><div class="kpi-value" style="color:{s_color}">{active_data["score"]}</div></div>', unsafe_allow_html=True)
-    with k3: st.markdown(f'<div class="kpi-card"><div class="kpi-label">MACD</div><div class="kpi-value" style="color:{m_color}">{"BULL" if active_data["macd_bull"] else "BEAR"}</div></div>', unsafe_allow_html=True)
-    with k4: st.markdown(f'<div class="kpi-card"><div class="kpi-label">EMA</div><div class="kpi-value" style="color:{e_color}">{"OK" if active_data["ema_ok"] else "WEAK"}</div></div>', unsafe_allow_html=True)
-    with k5: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Signal</div><div class="kpi-value" style="color:{sig_color}">{sig}</div></div>', unsafe_allow_html=True)
-
-    tv_html = f"""<div id="tv-chart" style="height: 500px; border: 1px solid #30363d; border-radius: 12px; margin-top: 15px;"></div>
+    tv_html = f"""<div id="tv-chart" style="height: 480px; border: 1px solid #30363d; border-radius: 12px; margin-top: 15px;"></div>
     <script src="https://s3.tradingview.com/tv.js"></script>
     <script>new TradingView.widget({{"autosize": true, "symbol": "{active_data['symbol']}", "interval": "D", "theme": "dark", "container_id": "tv-chart"}});</script>"""
-    components.html(tv_html, height=520)
+    components.html(tv_html, height=500)
 
-# --- UI: WATCHLIST GRID ---
+# --- UI: PROFESSIONAL WATCHLIST ---
 st.write("---")
-st.subheader("📋 Watchlist Scanner")
-cols = st.columns(3)
-for idx, item in enumerate(st.session_state.watchlist):
+st.subheader("Market Monitor")
+
+# Table Header
+st.markdown("""
+    <div style="display: flex; padding: 10px 20px; color: #8b949e; font-size: 0.7rem; text-transform: uppercase; font-weight: bold; border-bottom: 1px solid #30363d;">
+        <span style="flex: 1;">Ticker</span>
+        <span style="flex: 1; text-align: right;">Price</span>
+        <span style="flex: 1; text-align: center;">Score</span>
+        <span style="flex: 1; text-align: right;">Status</span>
+        <span style="flex: 1; text-align: right;">Actions</span>
+    </div>
+""", unsafe_allow_html=True)
+
+for item in st.session_state.watchlist:
     w = st.session_state.last_results.get(item)
     if w:
-        glow = "glow-green" if w['signal'] == "TREND" else "glow-blue" if w['signal'] == "BREAKOUT" else ""
-        s_clr = "#3fb950" if w['signal'] == "TREND" else "#2563eb" if w['signal'] == "BREAKOUT" else "#8b949e"
-        with cols[idx % 3]:
-            st.markdown(f"""
-                <div class="wl-box {glow}">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="color:white; font-weight:900; font-size:1.1rem;">{item}</span>
-                        <span style="color:{s_clr}; font-weight:bold; font-size:0.8rem;">{w['signal']}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-top:8px; color:#8b949e; font-size:0.85rem;">
-                        <span>Score: <b style="color:white;">{w['score']}</b></span>
-                        <span>Price: <b style="color:white;">${w['price']:.2f}</b></span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            b1, b2 = st.columns(2)
-            if b1.button(f"View {item}", key=f"v_{item}", use_container_width=True):
+        b_class = "badge-trend" if w['signal'] == "TREND" else "badge-breakout" if w['signal'] == "BREAKOUT" else "badge-none"
+        p_clr = "#3fb950" if w['change'] >= 0 else "#f85149"
+        dot_clr = "#3fb950" if w['score'] > 60 else "#d29922" if w['score'] > 40 else "#f85149"
+        
+        # Row Layout
+        row_html = f"""
+            <div class="wl-row">
+                <div class="wl-col-sym">{item}</div>
+                <div class="wl-col-price" style="color:{p_clr};">${w['price']:.2f}</div>
+                <div class="wl-col-score"><span class="dot" style="background:{dot_clr};"></span>{w['score']}</div>
+                <div class="wl-col-sig"><span class="badge {b_class}">{w['signal']}</span></div>
+                <div style="flex: 1; display: flex; justify-content: flex-end; gap: 5px;" id="btn-{item}"></div>
+            </div>
+        """
+        st.markdown(row_html, unsafe_allow_html=True)
+        
+        # Buttons positioned under the row using columns for alignment
+        bc1, bc2, bc3, bc4, bc5 = st.columns([1,1,1,1,1])
+        with bc5:
+            bt1, bt2 = st.columns(2)
+            if bt1.button("VIEW", key=f"v_{item}"):
                 st.session_state.current_ticker = item
                 st.rerun()
-            if b2.button(f"Delete {item}", key=f"d_{item}", use_container_width=True):
+            if bt2.button("DEL", key=f"d_{item}"):
                 st.session_state.watchlist.remove(item)
                 st.rerun()
 
