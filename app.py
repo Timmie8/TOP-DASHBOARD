@@ -11,7 +11,7 @@ st.markdown("""
     <style>
     .block-container { padding: 1.5rem !important; background-color: #050608; }
     
-    /* Professional Card Layout */
+    /* KPI Cards */
     .kpi-card {
         background: linear-gradient(145deg, #0d1117, #161b22);
         border: 1px solid #30363d;
@@ -29,21 +29,28 @@ st.markdown("""
         border: 1px solid #30363d;
         border-radius: 12px;
         padding: 15px;
-        margin-bottom: 15px;
-        transition: transform 0.2s, border 0.2s;
+        margin-bottom: 5px;
+        transition: transform 0.2s;
     }
-    .wl-card:hover {
-        border-color: #58a6ff;
-        transform: translateY(-2px);
+    
+    /* Alert Borders (Dynamic Glow) */
+    .alert-trend { 
+        border: 2px solid #3fb950 !important; 
+        box-shadow: 0 0 15px rgba(63, 185, 80, 0.4); 
     }
+    .alert-breakout { 
+        border: 2px solid #2563eb !important; 
+        box-shadow: 0 0 15px rgba(37, 99, 235, 0.4); 
+    }
+
     .wl-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
     .wl-symbol { font-size: 1.2rem; font-weight: 900; color: #ffffff; }
     .wl-price { font-family: 'Courier New', monospace; font-weight: 700; font-size: 1.1rem; }
     
     /* Dynamic Score Colors */
-    .score-high { color: #3fb950; text-shadow: 0 0 10px rgba(63, 185, 80, 0.4); }
-    .score-mid { color: #d29922; text-shadow: 0 0 10px rgba(210, 153, 34, 0.4); }
-    .score-low { color: #f85149; text-shadow: 0 0 10px rgba(248, 81, 73, 0.4); }
+    .score-high { color: #3fb950 !important; text-shadow: 0 0 10px rgba(63, 185, 80, 0.4); }
+    .score-mid { color: #d29922 !important; text-shadow: 0 0 10px rgba(210, 153, 34, 0.4); }
+    .score-low { color: #f85149 !important; text-shadow: 0 0 10px rgba(248, 81, 73, 0.4); }
     
     /* Signal Badges */
     .badge {
@@ -65,8 +72,13 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-def play_sound():
-    sound_html = """<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg"></audio>"""
+# Audio helper function
+def play_notification_sound():
+    sound_html = """
+    <audio autoplay>
+        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+    </audio>
+    """
     st.markdown(sound_html, unsafe_allow_html=True)
 
 # 2. State Management
@@ -108,26 +120,29 @@ def get_analysis(ticker_symbol):
         }
     except: return None
 
-# --- REFRESH DATA ---
+# --- SYNC DATA & ALERTS ---
 alerts = []
-play_alert = False
+trigger_sound = False
 for t in st.session_state.watchlist:
     res = get_analysis(t)
     if res: 
         st.session_state.last_results[t] = res
         if res['score'] >= 90: alerts.append(f"🔥 **{t}**: Extreme Momentum ({res['score']})")
         if res['signal'] in ["BREAKOUT", "TREND"]:
-            alerts.append(f"📈 **{t}**: {res['signal']} Alert!")
-            play_alert = True
+            alerts.append(f"📈 **{t}**: {res['signal']} Signal!")
+            trigger_sound = True
+
+# Play sound if signals are detected
+if trigger_sound:
+    play_notification_sound()
 
 # --- UI: HEADER ---
 st.title("SST ELITE TERMINAL")
 if alerts:
     for alert in alerts: st.toast(alert)
-if play_alert: play_sound()
 
 c1, c2, c3 = st.columns([4, 1, 1.5])
-input_tickers = c1.text_input("", placeholder="Quick Add (e.g. MSFT, AMZN, GOOGL)", key="ticker_input").upper()
+input_tickers = c1.text_input("", placeholder="Quick Add (e.g. MSFT, AMZN)", key="ticker_input").upper()
 
 if c2.button("➕ ADD", use_container_width=True):
     if input_tickers:
@@ -142,11 +157,10 @@ if c3.button("🔄 SYNC & SORT", use_container_width=True):
                                                  st.session_state.last_results.get(x, {}).get('score', 0)), reverse=True)
     st.rerun()
 
-# --- UI: MAIN CHART ---
+# --- UI: MAIN KPI ---
 active_data = st.session_state.last_results.get(st.session_state.current_ticker) or get_analysis(st.session_state.current_ticker)
 
 if active_data:
-    # Kleur bepalen voor Momentum Score
     s_val = active_data["score"]
     s_class = "score-high" if s_val >= 60 else "score-mid" if s_val >= 40 else "score-low"
     
@@ -170,16 +184,21 @@ cols = st.columns(3)
 for idx, item in enumerate(st.session_state.watchlist):
     w = st.session_state.last_results.get(item)
     if w:
+        # Bepaal alert rand
+        alert_class = ""
+        if w['signal'] == "TREND": alert_class = "alert-trend"
+        elif w['signal'] == "BREAKOUT": alert_class = "alert-breakout"
+        
         b_class = "badge-trend" if w['signal'] == "TREND" else "badge-breakout" if w['signal'] == "BREAKOUT" else "badge-none"
         p_clr = "#3fb950" if w['change'] >= 0 else "#f85149"
         
-        # Kleur voor score in watchlist
+        # Kleur voor score
         sw_val = w['score']
         sw_class = "score-high" if sw_val >= 60 else "score-mid" if sw_val >= 40 else "score-low"
         
         with cols[idx % 3]:
             st.markdown(f"""
-                <div class="wl-card">
+                <div class="wl-card {alert_class}">
                     <div class="wl-header">
                         <span class="wl-symbol">{item}</span>
                         <span class="badge {b_class}">{w['signal']}</span>
