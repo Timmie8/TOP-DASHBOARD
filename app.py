@@ -4,10 +4,9 @@ import yfinance as yf
 import pandas_ta as ta
 import pandas as pd
 import os
-import numpy as np
 from datetime import datetime
 
-# --- 1. PAGINA CONFIGURATIE ---
+# 1. Pagina Configuratie
 st.set_page_config(page_title="SST ELITE TERMINAL", layout="wide")
 
 WATCHLIST_FILE = "watchlist_data.csv"
@@ -94,7 +93,7 @@ with st.sidebar:
     st.title("SST NAVIGATION")
     page = st.radio("Go to:", ["Elite Terminal", "User Guide"], key="nav_radio")
     st.write("---")
-    st.info("v2.8 - Advanced Indicators")
+    st.info("v2.7 - Full Guide & Colors")
 
 # --- PAGE 1: TERMINAL ---
 if page == "Elite Terminal":
@@ -114,13 +113,13 @@ if page == "Elite Terminal":
         if res: st.session_state.last_results[t] = res
 
     c1, c2, c3 = st.columns([4, 1, 1.5])
-    input_tickers = c1.text_input("", placeholder="Tickers toevoegen (bijv: AAPL, TSLA)...", key="ticker_input").upper()
+    input_tickers = c1.text_input("", placeholder="Ticker toevoegen...", key="ticker_input").upper()
 
     if c2.button("➕ ADD", use_container_width=True):
         if input_tickers:
             new_list = [x.strip() for x in input_tickers.split(',')]
             for t in new_list:
-                if t and t not in st.session_state.watchlist: st.session_state.watchlist.append(t)
+                if t not in st.session_state.watchlist: st.session_state.watchlist.append(t)
             save_watchlist(st.session_state.watchlist)
             st.session_state.current_ticker = new_list[-1]
             st.rerun()
@@ -151,43 +150,9 @@ if page == "Elite Terminal":
         st.write("")
         col_chart, col_alerts = st.columns([3, 1])
         with col_chart:
-            # TradingView HTML met alle gevraagde indicatoren
-            tv_html = f"""
-            <div id="tv-chart" style="height: 500px; border: 1px solid #30363d; border-radius: 12px;"></div>
+            tv_html = f"""<div id="tv-chart" style="height: 500px; border: 1px solid #30363d; border-radius: 12px;"></div>
             <script src="https://s3.tradingview.com/tv.js"></script>
-            <script>
-            new TradingView.widget({{
-              "autosize": true,
-              "symbol": "{active_data['symbol']}",
-              "interval": "D",
-              "timezone": "Etc/UTC",
-              "theme": "dark",
-              "style": "1",
-              "locale": "en",
-              "toolbar_bg": "#f1f3f6",
-              "enable_publishing": false,
-              "hide_side_toolbar": false,
-              "allow_symbol_change": true,
-              "container_id": "tv-chart",
-              "studies": [
-                "MACD@tv-basicstudies",
-                "RSI@tv-basicstudies",
-                "BollingerBands@tv-basicstudies",
-                {{
-                    "id": "EMA@tv-basicstudies",
-                    "inputs": {{ "length": 20 }}
-                }},
-                {{
-                    "id": "EMA@tv-basicstudies",
-                    "inputs": {{ "length": 50 }}
-                }},
-                {{
-                    "id": "EMA@tv-basicstudies",
-                    "inputs": {{ "length": 200 }}
-                }}
-              ]
-            }});
-            </script>"""
+            <script>new TradingView.widget({{"autosize": true, "symbol": "{active_data['symbol']}", "interval": "D", "theme": "dark", "container_id": "tv-chart"}});</script>"""
             components.html(tv_html, height=510)
         
         with col_alerts:
@@ -221,7 +186,7 @@ if page == "Elite Terminal":
                     save_watchlist(st.session_state.watchlist)
                     st.rerun()
 
-# --- PAGE 2: USER GUIDE ---
+# --- PAGE 2: USER GUIDE (FULL TEXT) ---
 elif page == "User Guide":
     c1, c2 = st.columns([5, 1])
     c1.title("📖 SST User Guide")
@@ -232,12 +197,37 @@ elif page == "User Guide":
     st.header("Explanation of the SST Elite Terminal")
     st.write("At the top of the panel, you can select a stock of your choice. The system will then immediately analyze the stock and provide a score.")
 
-    with st.expander("Chart Indicators (New)", expanded=True):
+    with st.expander("AI Score & Health", expanded=True):
         st.write("""
-        The chart now automatically loads:
-        - **MACD & RSI**: For momentum and overbought/oversold levels.
-        - **EMA 20, 50, 200**: To identify short, medium, and long-term trends.
-        - **Bollinger Bands**: To visualize volatility and price extremes.
+        The first box shows the **AI Score**. The AI method behind this score evaluates the short-term potential of the stock. 
+        The higher the score, the greater the chance that the stock will rise.
+        
+        Under **Health**, you will find the strength of the overall technical analysis that supports this score.
+        """)
+
+    with st.expander("Signal", expanded=True):
+        st.write("""
+        Under **Signal**, you will see the active signal if one is available, for example a **breakout**.
+        """)
+
+    with st.expander("How to use the Terminal", expanded=True):
+        st.write("""
+        You can use the terminal in two ways:
+        1. By following the **AI Score**, or
+        2. By using the **Signal**.
+        
+        Of course, you can also choose to combine both.
+        """)
+
+    with st.expander("Add & Sync", expanded=True):
+        st.write("""
+        When you press **Add**, the stock will be added to the watchlist below the chart.
+        When you press the **Sync** button, the latest score is retrieved, ensuring that you are always up to date.
+        """)
+
+    with st.expander("Live Alerts", expanded=True):
+        st.write("""
+        Next to the chart, you will also see the signals that are currently active.
         """)
 
     st.divider()
