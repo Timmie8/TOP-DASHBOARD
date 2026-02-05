@@ -22,12 +22,14 @@ st.markdown("""
     .kpi-value { font-size: 1.6rem; font-weight: 800; }
     .kpi-label { font-size: 0.65rem; color: #8b949e; text-transform: uppercase; }
 
-    /* Score Colors */
+    /* Score Colors - High Contrast met Glow */
     .score-high { color: #3fb950 !important; text-shadow: 0 0 12px rgba(63, 185, 80, 0.6); }
-    .score-mid { color: #d29922 !important; text-shadow: 0 0 12px rgba(210, 153, 34, 0.6); }
-    .score-low { color: #f85149 !important; text-shadow: 0 0 12px rgba(248, 81, 73, 0.6); }
+    .score-mid { color: #d29922 !important; text-shadow: 0 0 10px rgba(210, 153, 34, 0.6); }
+    .score-low { color: #f85149 !important; text-shadow: 0 0 10px rgba(248, 81, 73, 0.6); }
+    
     .text-bull { color: #3fb950 !important; }
     .text-bear { color: #f85149 !important; }
+    .text-breakout { color: #2563eb !important; text-shadow: 0 0 8px rgba(37, 99, 235, 0.5); }
 
     /* Watchlist Cards */
     .wl-card {
@@ -43,7 +45,13 @@ st.markdown("""
         font-size: 1.2rem;
     }
     
-    /* Watchlist Buttons - Donker met witte rand */
+    /* Fel witte tekst voor het label 'Score:' */
+    .score-label-white {
+        color: #ffffff !important;
+        font-weight: bold;
+    }
+
+    /* Watchlist Buttons */
     .stButton > button {
         background-color: #1c2128 !important;
         color: #ffffff !important;
@@ -98,7 +106,7 @@ for t in st.session_state.watchlist:
 # --- UI: HEADER ---
 st.title("SST ELITE TERMINAL")
 c1, c2, c3 = st.columns([4, 1, 1.5])
-input_tickers = c1.text_input("", placeholder="Ticker toevoegen (bijv. AAPL)...", key="ticker_input").upper()
+input_tickers = c1.text_input("", placeholder="Ticker toevoegen...", key="ticker_input").upper()
 
 if c2.button("➕ ADD", use_container_width=True):
     if input_tickers:
@@ -106,14 +114,12 @@ if c2.button("➕ ADD", use_container_width=True):
         for t in new_tickers:
             if t not in st.session_state.watchlist:
                 st.session_state.watchlist.append(t)
-        # DIRECTE UPDATE: Zet de laatst toegevoegde ticker als actieve weergave
         st.session_state.current_ticker = new_tickers[-1]
         st.rerun()
 
 if c3.button("🔄 SYNC", use_container_width=True): st.rerun()
 
 # --- UI: MAIN KPI BAR ---
-# We halen altijd de data op voor de 'current_ticker'
 active_data = get_analysis(st.session_state.current_ticker)
 
 if active_data:
@@ -142,13 +148,16 @@ if active_data:
         st.markdown('<p style="color:#8b949e; font-size:0.75rem; font-weight:bold; margin-bottom:10px;">LIVE SIGNALS</p>', unsafe_allow_html=True)
         alert_container = st.container(height=465, border=True)
         with alert_container:
-            # Genereer alerts voor de hele watchlist
             all_alerts = []
             for item in st.session_state.watchlist:
                 res = st.session_state.last_results.get(item)
                 if res:
-                    if res['score'] >= 85: all_alerts.append({"msg": f"🔥 {item}: Momentum ({res['score']})", "color": "#d29922"})
-                    if res['signal'] in ["BREAKOUT", "TREND"]: all_alerts.append({"msg": f"📈 {item}: {res['signal']}!", "color": "#3fb950"})
+                    if res['score'] >= 85: 
+                        all_alerts.append({"msg": f"🔥 {item}: Momentum ({res['score']})", "color": "#d29922"})
+                    if res['signal'] == "BREAKOUT": 
+                        all_alerts.append({"msg": f"📈 {item}: BREAKOUT!", "color": "#2563eb"})
+                    if res['signal'] == "TREND": 
+                        all_alerts.append({"msg": f"📈 {item}: TREND!", "color": "#3fb950"})
             
             if not all_alerts:
                 st.write("Scanning...")
@@ -164,22 +173,8 @@ for idx, item in enumerate(st.session_state.watchlist):
     if w:
         sw_c = "score-high" if w['score'] >= 60 else "score-mid" if w['score'] >= 40 else "score-low"
         price_c = "text-bull" if w['change'] >= 0 else "text-bear"
-        alert_c = "alert-trend" if w['signal'] == "TREND" else "alert-breakout" if w['signal'] == "BREAKOUT" else ""
-        
-        with cols[idx % 3]:
-            st.markdown(f"""<div class="wl-card {alert_c}">
-                <div style="display:flex; justify-content:space-between;"><b>{item}</b><span style="color:#8b949e; font-size:0.75rem;">{w['signal']}</span></div>
-                <div style="display:flex; justify-content:space-between; margin-top:10px;">
-                    <span class="{price_c}" style="font-weight:bold;">${w['price']:.2f}</span>
-                    <span>Score: <b class="{sw_c}">{w['score']}</b></span>
-                </div></div>""", unsafe_allow_html=True)
-            b1, b2 = st.columns(2)
-            if b1.button("VIEW", key=f"v_{item}", use_container_width=True): 
-                st.session_state.current_ticker = item
-                st.rerun()
-            if b2.button("DEL", key=f"d_{item}", use_container_width=True): 
-                st.session_state.watchlist.remove(item)
-                st.rerun()
+        signal_c = "text-bull" if w['signal'] == "TREND" else "text-breakout" if w['signal'] == "BREAKOUT" else "color:#8b949e"
+        alert
 
 
 
