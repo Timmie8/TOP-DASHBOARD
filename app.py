@@ -91,9 +91,20 @@ with st.sidebar:
 
 # --- PAGE 1: TERMINAL ---
 if page == "Elite Terminal":
+    # 1. Bovenaan de site voegen we een knop toe in de header
+    head_col1, head_col2 = st.columns([5, 1])
+    with head_col1:
+        st.title("SST ELITE TERMINAL")
+    with head_col2:
+        # Een knop die de 'page' radiobutton in de sidebar forceert naar 'User Guide'
+        if st.button("📖 HELP / GUIDE", use_container_width=True):
+            # Let op: de key van de radiobutton moet overeenkomen of we gebruiken een rerun
+            st.session_state.page_selection = "User Guide" # We voegen een helper toe aan de sidebar radio
+            st.rerun()
+
+    # De rest van je bestaande Terminal code...
     if 'watchlist' not in st.session_state: st.session_state.watchlist = load_watchlist()
-    if 'current_ticker' not in st.session_state: st.session_state.current_ticker = st.session_state.watchlist[0]
-    if 'last_results' not in st.session_state: st.session_state.last_results = {}
+    # ... (input velden, kpi's, etc.)
 
     for t in st.session_state.watchlist:
         res = get_analysis(t)
@@ -208,6 +219,7 @@ elif page == "User Guide":
     st.divider()
     st.markdown("### *Good luck with the terminal.*")
     st.markdown("**Team SST (Swingstocktraders)**")
+
 
 
 
