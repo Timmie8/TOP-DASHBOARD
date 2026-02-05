@@ -13,15 +13,14 @@ WATCHLIST_FILE = "watchlist_data.csv"
 
 def load_watchlist():
     if os.path.exists(WATCHLIST_FILE):
-        try:
-            return pd.read_csv(WATCHLIST_FILE)['ticker'].tolist()
+        try: return pd.read_csv(WATCHLIST_FILE)['ticker'].tolist()
         except: pass
     return ["NVDA", "AAPL", "TSLA"]
 
 def save_watchlist(watchlist):
     pd.DataFrame({'ticker': watchlist}).to_csv(WATCHLIST_FILE, index=False)
 
-# CSS Styling
+# CSS Styling (ongewijzigd)
 st.markdown("""
     <style>
     .block-container { padding: 1rem !important; background-color: #050608; }
@@ -33,36 +32,35 @@ st.markdown("""
     .score-low { color: #f85149 !important; text-shadow: 0 0 10px rgba(248, 81, 73, 0.6); }
     .text-bull { color: #3fb950 !important; }
     .text-bear { color: #f85149 !important; }
-    .text-breakout { color: #2563eb !important; text-shadow: 0 0 8px rgba(37, 99, 235, 0.5); }
-    
     .earnings-imminent { 
         background: rgba(248, 81, 73, 0.15); border: 1px solid #f85149; color: #f85149; 
         padding: 12px; border-radius: 8px; font-weight: bold; text-align: center;
         animation: blink 2s infinite; margin-bottom: 15px;
     }
     @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
-    
     .wl-card { background: #0d1117; border: 1px solid #30363d; border-radius: 12px; padding: 15px; margin-bottom: 5px; }
-    .wl-card b { color: #ffffff !important; text-shadow: 0px 0px 8px rgba(255,255,255,0.6); font-size: 1.2rem; }
+    .wl-card b { color: #ffffff !important; font-size: 1.2rem; }
     .score-label-white { color: #ffffff !important; font-weight: bold; }
     .stButton > button { background-color: #1c2128 !important; color: #ffffff !important; border: 1px solid #444c56 !important; }
-    .alert-trend { border: 2px solid #3fb950 !important; }
-    .alert-breakout { border: 2px solid #2563eb !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. Analysis Function
+# --- Verbeterde Earnings Functie ---
 @st.cache_data(ttl=3600)
 def get_earnings_info(ticker_symbol):
     try:
         t_obj = yf.Ticker(ticker_symbol)
+        # Methode 1: De officiële kalender
         cal = t_obj.calendar
         if cal is not None and 'Earnings Date' in cal:
-            e_date = cal['Earnings Date'][0]
-            # Zorg dat het een datetime object is
-            if isinstance(e_date, (pd.Timestamp, datetime)):
-                return e_date
-    except: return None
+            return cal['Earnings Date'][0]
+        
+        # Methode 2: Back-up via de info-dict
+        info = t_obj.info
+        if 'nextEarningsDate' in info:
+            return datetime.fromtimestamp(info['nextEarningsDate'])
+    except:
+        return None
     return None
 
 @st.cache_data(ttl=15)
@@ -115,17 +113,22 @@ if c3.button("🔄 SYNC", use_container_width=True): st.rerun()
 # --- MAIN DISPLAY ---
 active_data = st.session_state.last_results.get(st.session_state.current_ticker)
 if active_data:
-    # Veilige Earnings Check
     today = datetime.now().date()
-    is_imminent = False
     earn_str = "N/A"
     
-    if active_data["earnings"]:
-        earn_date = active_data["earnings"].date()
+    # Veilig de datum verwerken
+    raw_earn = active_data.get("earnings")
+    if raw_earn:
+        # Check of het een Timestamp of datetime is
+        if hasattr(raw_earn, 'date'):
+            earn_date = raw_earn.date()
+        else:
+            earn_date = raw_earn # Al een date object
+            
         earn_str = earn_date.strftime("%d %b")
         days_diff = (earn_date - today).days
         if 0 <= days_diff <= 2:
-            st.markdown(f'<div class="earnings-imminent">⚠️ EARNINGS WAARSCHUWING: {active_data["symbol"]} rapporteert over {days_diff} dag(en) ({earn_str})</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="earnings-imminent">⚠️ EARNINGS WAARSCHUWING: {active_data["symbol"]} over {days_diff} dag(en) ({earn_str})</div>', unsafe_allow_html=True)
 
     # KPI Bar
     s_val = active_data["score"]
@@ -135,8 +138,8 @@ if active_data:
     k1, k2, k3, k4, k5 = st.columns(5)
     with k1: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Price</div><div class="kpi-value {p_class}">${active_data["price"]:.2f}</div></div>', unsafe_allow_html=True)
     with k2: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Score</div><div class="kpi-value {s_class}">{s_val}</div></div>', unsafe_allow_html=True)
-    with k3: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Earnings</div><div class="kpi-value" style="font-size:1.2rem; color:white;">{earn_str}</div></div>', unsafe_allow_html=True)
-    with k4: st.markdown(f'<div class="kpi-card"><div class="kpi-label">MACD</div><div class="kpi-value {"text-bull" if active_data["macd_bull"] else "text-bear"}">{"BULL" if active_data["macd_bull"] else "BEAR"}</div></div>', unsafe_allow_html=True)
+    with k3: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Next Earnings</div><div class="kpi-value" style="font-size:1.2rem; color:white;">{earn_str}</div></div>', unsafe_allow_html=True)
+    with k4: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Health</div><div class="kpi-value {"text-bull" if active_data["ema_ok"] else "text-bear"}">{"OK" if active_data["ema_ok"] else "WEAK"}</div></div>', unsafe_allow_html=True)
     with k5: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Signal</div><div class="kpi-value" style="color:white;">{active_data["signal"]}</div></div>', unsafe_allow_html=True)
 
     # Chart & Sidebar
@@ -153,17 +156,17 @@ if active_data:
         with st.container(height=465, border=True):
             for item in st.session_state.watchlist:
                 r = st.session_state.last_results.get(item)
-                if r:
-                    # Earnings Alert in sidebar
-                    if r["earnings"]:
-                        d_diff = (r["earnings"].date() - today).days
+                if r and r.get("earnings"):
+                    try:
+                        ed = r["earnings"].date() if hasattr(r["earnings"], 'date') else r["earnings"]
+                        d_diff = (ed - today).days
                         if 0 <= d_diff <= 2:
-                            st.markdown(f'<div style="color:#f85149; font-size:0.8rem; padding:5px; border:1px solid #f85149; border-radius:5px; margin-bottom:10px; font-weight:bold;">🚨 {item} EARNINGS: {r["earnings"].strftime("%d %b")}</div>', unsafe_allow_html=True)
-                    
-                    # Technical Signals
+                            st.markdown(f'<div style="color:#f85149; font-size:0.8rem; padding:5px; border:1px solid #f85149; border-radius:5px; margin-bottom:10px; font-weight:bold;">🚨 {item} EARNINGS: {ed.strftime("%d %b")}</div>', unsafe_allow_html=True)
+                    except: pass
+                
+                if r:
                     if r['score'] >= 85: st.markdown(f'<div style="color:#d29922; font-size:0.85rem; padding:8px 0; border-bottom:1px solid #30363d; font-weight:600;">🔥 {item}: Momentum ({r["score"]})</div>', unsafe_allow_html=True)
                     if r['signal'] == "BREAKOUT": st.markdown(f'<div style="color:#2563eb; font-size:0.85rem; padding:8px 0; border-bottom:1px solid #30363d; font-weight:600;">📈 {item}: BREAKOUT!</div>', unsafe_allow_html=True)
-                    if r['signal'] == "TREND": st.markdown(f'<div style="color:#3fb950; font-size:0.85rem; padding:8px 0; border-bottom:1px solid #30363d; font-weight:600;">📈 {item}: TREND!</div>', unsafe_allow_html=True)
 
 # --- WATCHLIST GRID ---
 st.write("---")
@@ -174,13 +177,15 @@ for idx, item in enumerate(st.session_state.watchlist):
         sw_c = "score-high" if w['score'] >= 60 else "score-mid" if w['score'] >= 40 else "score-low"
         price_c = "text-bull" if w['change'] >= 0 else "text-bear"
         sig_color = "color:#3fb950;" if w['signal'] == "TREND" else "color:#2563eb;" if w['signal'] == "BREAKOUT" else "color:#8b949e;"
-        border_c = "alert-trend" if w['signal'] == "TREND" else "alert-breakout" if w['signal'] == "BREAKOUT" else ""
-        earn_date_short = w["earnings"].strftime("%d/%m") if w["earnings"] else "N/A"
+        
+        # Veilige weergave in watchlist
+        w_earn = w.get("earnings")
+        e_short = w_earn.strftime("%d/%m") if w_earn and hasattr(w_earn, 'strftime') else "N/A"
         
         with cols[idx % 3]:
-            st.markdown(f"""<div class="wl-card {border_c}">
+            st.markdown(f"""<div class="wl-card">
                 <div style="display:flex; justify-content:space-between;"><b>{item}</b><span style="{sig_color} font-size:0.75rem; font-weight:bold;">{w['signal']}</span></div>
-                <div style="font-size:0.7rem; color:#8b949e; margin-top:2px;">Earnings: {earn_date_short}</div>
+                <div style="font-size:0.7rem; color:#8b949e; margin-top:2px;">Next Earnings: {e_short}</div>
                 <div style="display:flex; justify-content:space-between; margin-top:8px;">
                     <span class="{price_c}" style="font-weight:bold;">${w['price']:.2f}</span>
                     <span class="score-label-white">Score: <span class="{sw_c}">{w['score']}</span></span>
