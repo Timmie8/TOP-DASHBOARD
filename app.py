@@ -62,10 +62,18 @@ def get_analysis(ticker_symbol):
         }
     except: return None
 
-# --- SYNC DATA ---
+# --- SYNC DATA & NOTIFICATIE LOGICA ---
 for t in st.session_state.watchlist:
     res = get_analysis(t)
-    if res: st.session_state.last_results[t] = res
+    if res: 
+        st.session_state.last_results[t] = res
+        
+        # Check voor Notificaties
+        if res['score'] >= 90:
+            st.toast(f"🔥 EXTREEM MOMENTUM: {t} heeft een score van {res['score']}!", icon="🚀")
+        
+        if res['signal'] in ["BREAKOUT", "TREND"]:
+            st.toast(f"⚡ SIGNAAL DETECTIE: {t} geeft een {res['signal']} signaal!", icon="📈")
 
 # --- UI: TOP BAR ---
 st.title("🚀 SST ELITE DASHBOARD")
@@ -115,7 +123,6 @@ for idx, item in enumerate(st.session_state.watchlist):
         glow = "glow-green" if w['signal'] == "TREND" else "glow-blue" if w['signal'] == "BREAKOUT" else ""
         s_clr = "#3fb950" if w['signal'] == "TREND" else "#2563eb" if w['signal'] == "BREAKOUT" else "#8b949e"
         with cols[idx % 3]:
-            # HTML code opgesplitst om SyntaxErrors te voorkomen
             st.markdown(f"""
                 <div class="wl-box {glow}">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -135,6 +142,7 @@ for idx, item in enumerate(st.session_state.watchlist):
             if b2.button(f"Wis {item}", key=f"d_{item}", use_container_width=True):
                 st.session_state.watchlist.remove(item)
                 st.rerun()
+
 
 
 
