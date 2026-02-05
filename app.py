@@ -43,16 +43,15 @@ st.markdown("""
         font-size: 1.2rem;
     }
     
-    /* Watchlist Buttons - HERSTELD VOOR LEESBAARHEID */
+    /* Watchlist Buttons - Donker met witte rand */
     .stButton > button {
         background-color: #1c2128 !important;
         color: #ffffff !important;
         border: 1px solid #444c56 !important;
         font-size: 0.75rem !important;
-        transition: all 0.2s;
     }
     .stButton > button:hover {
-        border-color: #8b949e !important;
+        border-color: #ffffff !important;
         background-color: #30363d !important;
     }
 
@@ -91,30 +90,32 @@ def get_analysis(ticker_symbol):
                 "macd_bull": ml > sl, "ema_ok": price > e50, "change": change}
     except: return None
 
-# --- ALERTS GENERATOR (EENVOUDIGE LIJST) ---
-active_alerts = []
+# --- PRE-RUN SYNC ---
 for t in st.session_state.watchlist:
     res = get_analysis(t)
-    if res:
-        st.session_state.last_results[t] = res
-        if res['score'] >= 85:
-            active_alerts.append({"msg": f"🔥 {t}: Momentum ({res['score']})", "color": "#d29922"})
-        if res['signal'] in ["BREAKOUT", "TREND"]:
-            active_alerts.append({"msg": f"📈 {t}: {res['signal']}!", "color": "#3fb950"})
+    if res: st.session_state.last_results[t] = res
 
 # --- UI: HEADER ---
 st.title("SST ELITE TERMINAL")
 c1, c2, c3 = st.columns([4, 1, 1.5])
-input_tickers = c1.text_input("", placeholder="Ticker toevoegen...", key="ticker_input").upper()
+input_tickers = c1.text_input("", placeholder="Ticker toevoegen (bijv. AAPL)...", key="ticker_input").upper()
+
 if c2.button("➕ ADD", use_container_width=True):
     if input_tickers:
-        for t in [x.strip() for x in input_tickers.split(',')]:
-            if t not in st.session_state.watchlist: st.session_state.watchlist.append(t)
+        new_tickers = [x.strip() for x in input_tickers.split(',')]
+        for t in new_tickers:
+            if t not in st.session_state.watchlist:
+                st.session_state.watchlist.append(t)
+        # DIRECTE UPDATE: Zet de laatst toegevoegde ticker als actieve weergave
+        st.session_state.current_ticker = new_tickers[-1]
         st.rerun()
+
 if c3.button("🔄 SYNC", use_container_width=True): st.rerun()
 
-# --- UI: KPI BAR ---
-active_data = st.session_state.last_results.get(st.session_state.current_ticker) or get_analysis(st.session_state.current_ticker)
+# --- UI: MAIN KPI BAR ---
+# We halen altijd de data op voor de 'current_ticker'
+active_data = get_analysis(st.session_state.current_ticker)
+
 if active_data:
     s_val = active_data["score"]
     s_class = "score-high" if s_val >= 60 else "score-mid" if s_val >= 40 else "score-low"
@@ -141,10 +142,18 @@ if active_data:
         st.markdown('<p style="color:#8b949e; font-size:0.75rem; font-weight:bold; margin-bottom:10px;">LIVE SIGNALS</p>', unsafe_allow_html=True)
         alert_container = st.container(height=465, border=True)
         with alert_container:
-            if not active_alerts:
+            # Genereer alerts voor de hele watchlist
+            all_alerts = []
+            for item in st.session_state.watchlist:
+                res = st.session_state.last_results.get(item)
+                if res:
+                    if res['score'] >= 85: all_alerts.append({"msg": f"🔥 {item}: Momentum ({res['score']})", "color": "#d29922"})
+                    if res['signal'] in ["BREAKOUT", "TREND"]: all_alerts.append({"msg": f"📈 {item}: {res['signal']}!", "color": "#3fb950"})
+            
+            if not all_alerts:
                 st.write("Scanning...")
             else:
-                for a in active_alerts:
+                for a in all_alerts:
                     st.markdown(f'<div style="color:{a["color"]}; font-size:0.85rem; padding:8px 0; border-bottom:1px solid #30363d; font-weight:600;">{a["msg"]}</div>', unsafe_allow_html=True)
 
 # --- WATCHLIST GRID ---
@@ -171,6 +180,7 @@ for idx, item in enumerate(st.session_state.watchlist):
             if b2.button("DEL", key=f"d_{item}", use_container_width=True): 
                 st.session_state.watchlist.remove(item)
                 st.rerun()
+
 
 
 
