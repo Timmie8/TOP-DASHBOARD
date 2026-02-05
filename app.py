@@ -4,7 +4,7 @@ import yfinance as yf
 import pandas_ta as ta
 import pandas as pd
 
-# 1. Pagina Configuratie
+# 1. Page Configuration
 st.set_page_config(page_title="SST ELITE TERMINAL", layout="wide")
 
 st.markdown("""
@@ -30,7 +30,7 @@ if 'current_ticker' not in st.session_state:
 if 'last_results' not in st.session_state:
     st.session_state.last_results = {}
 
-# 3. Analyse Functie
+# 3. Analysis Function
 @st.cache_data(ttl=10)
 def get_analysis(ticker_symbol):
     try:
@@ -62,37 +62,41 @@ def get_analysis(ticker_symbol):
         }
     except: return None
 
-# --- SYNC DATA & NOTIFICATIE LOGICA ---
+# --- SYNC DATA & NOTIFICATIONS ---
+alerts = []
 for t in st.session_state.watchlist:
     res = get_analysis(t)
     if res: 
         st.session_state.last_results[t] = res
-        
-        # Check voor Notificaties
         if res['score'] >= 90:
-            st.toast(f"🔥 EXTREEM MOMENTUM: {t} heeft een score van {res['score']}!", icon="🚀")
-        
+            alerts.append(f"🔥 **{t}**: Extreme Momentum (Score: {res['score']})")
         if res['signal'] in ["BREAKOUT", "TREND"]:
-            st.toast(f"⚡ SIGNAAL DETECTIE: {t} geeft een {res['signal']} signaal!", icon="📈")
+            alerts.append(f"📈 **{t}**: {res['signal']} Signal Detected!")
 
 # --- UI: TOP BAR ---
 st.title("🚀 SST ELITE DASHBOARD")
-c1, c2, c3 = st.columns([4, 1, 1.5])
-input_tickers = c1.text_input("", placeholder="Tickers (bv: NVDA, AAPL)", label_visibility="collapsed").upper()
 
-if c2.button("➕ ADD", use_container_width=True):
+# Permanent Alert Section (remains visible until refresh/fix)
+if alerts:
+    for alert in alerts:
+        st.error(alert)
+
+c1, c2, c3 = st.columns([4, 1, 1.5])
+input_tickers = c1.text_input("", placeholder="Enter tickers (e.g., NVDA, AAPL, BTC-USD)", label_visibility="collapsed").upper()
+
+if c2.button("➕ ADD TICKERS", use_container_width=True):
     if input_tickers:
         new_list = [t.strip() for t in input_tickers.split(',') if t.strip()]
         for t in new_list:
             if t not in st.session_state.watchlist: st.session_state.watchlist.append(t)
         st.rerun()
 
-if c3.button("🔍 SCAN & SORTEER", use_container_width=True):
+if c3.button("🔍 SCAN & SORT", use_container_width=True):
     st.session_state.watchlist.sort(key=lambda x: (st.session_state.last_results.get(x, {}).get('priority', 0), 
                                                  st.session_state.last_results.get(x, {}).get('score', 0)), reverse=True)
     st.rerun()
 
-# --- UI: KPI SECTIE ---
+# --- UI: KPI SECTION ---
 active_data = st.session_state.last_results.get(st.session_state.current_ticker)
 if active_data:
     k1, k2, k3, k4, k5 = st.columns(5)
@@ -106,7 +110,7 @@ if active_data:
     with k1: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Price</div><div class="kpi-value" style="color:{p_color}">${active_data["price"]:.2f}</div></div>', unsafe_allow_html=True)
     with k2: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Score</div><div class="kpi-value" style="color:{s_color}">{active_data["score"]}</div></div>', unsafe_allow_html=True)
     with k3: st.markdown(f'<div class="kpi-card"><div class="kpi-label">MACD</div><div class="kpi-value" style="color:{m_color}">{"BULL" if active_data["macd_bull"] else "BEAR"}</div></div>', unsafe_allow_html=True)
-    with k4: st.markdown(f'<div class="kpi-card"><div class="kpi-label">EMA</div><div class="kpi-value" style="color:{e_color}">{"OK" if active_data["ema_ok"] else "ZWAK"}</div></div>', unsafe_allow_html=True)
+    with k4: st.markdown(f'<div class="kpi-card"><div class="kpi-label">EMA</div><div class="kpi-value" style="color:{e_color}">{"OK" if active_data["ema_ok"] else "WEAK"}</div></div>', unsafe_allow_html=True)
     with k5: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Signal</div><div class="kpi-value" style="color:{sig_color}">{sig}</div></div>', unsafe_allow_html=True)
 
     tv_html = f"""<div id="tv-chart" style="height: 500px; border: 1px solid #30363d; border-radius: 12px; margin-top: 15px;"></div>
@@ -116,6 +120,7 @@ if active_data:
 
 # --- UI: GRID WATCHLIST ---
 st.write("---")
+st.subheader("📋 Watchlist Scanner")
 cols = st.columns(3)
 for idx, item in enumerate(st.session_state.watchlist):
     w = st.session_state.last_results.get(item)
@@ -131,15 +136,15 @@ for idx, item in enumerate(st.session_state.watchlist):
                     </div>
                     <div style="display: flex; justify-content: space-between; margin-top:8px; color:#8b949e; font-size:0.85rem;">
                         <span>Score: <b style="color:white;">{w['score']}</b></span>
-                        <span>Prijs: <b style="color:white;">${w['price']:.2f}</b></span>
+                        <span>Price: <b style="color:white;">${w['price']:.2f}</b></span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
             b1, b2 = st.columns(2)
-            if b1.button(f"Bekijk {item}", key=f"v_{item}", use_container_width=True):
+            if b1.button(f"View {item}", key=f"v_{item}", use_container_width=True):
                 st.session_state.current_ticker = item
                 st.rerun()
-            if b2.button(f"Wis {item}", key=f"d_{item}", use_container_width=True):
+            if b2.button(f"Delete {item}", key=f"d_{item}", use_container_width=True):
                 st.session_state.watchlist.remove(item)
                 st.rerun()
 
