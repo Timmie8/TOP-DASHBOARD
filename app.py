@@ -3,13 +3,10 @@ import streamlit.components.v1 as components
 import yfinance as yf
 import pandas_ta as ta
 import pandas as pd
-from streamlit_autorefresh import st_autorefresh
 
-# 1. Pagina Configuratie & Autorefresh (elke 60 seconden)
-st.set_page_config(page_title="SST ELITE REAL-TIME", layout="wide")
-st_autorefresh(interval=60 * 1000, key="datarefresh")
+# 1. Pagina Configuratie (Geen autorefresh import nodig)
+st.set_page_config(page_title="SST ELITE TERMINAL", layout="wide")
 
-# CSS voor styling, kleuren en de "Glow" effecten
 st.markdown("""
     <style>
     .block-container { padding: 15px !important; background-color: #050608; }
@@ -35,7 +32,6 @@ st.markdown("""
         border: 1px solid #30363d;
     }
     
-    /* Oplichtende Randen (Glow effect) */
     .glow-green { border: 2px solid #3fb950 !important; box-shadow: 0 0 10px rgba(63, 185, 80, 0.4); }
     .glow-blue { border: 2px solid #2563eb !important; box-shadow: 0 0 10px rgba(37, 99, 235, 0.4); }
     
@@ -50,7 +46,6 @@ if 'current_ticker' not in st.session_state:
     st.session_state.current_ticker = "NVDA"
 
 # 3. Analyse Functie
-@st.cache_data(ttl=55)
 def get_analysis(ticker_symbol):
     try:
         df = yf.download(ticker_symbol, period="1y", interval="1d", progress=False, auto_adjust=True)
@@ -85,7 +80,7 @@ def get_analysis(ticker_symbol):
 # --- UI: TOP BAR ---
 st.title("🚀 SST ELITE TERMINAL")
 c1, c2, c3 = st.columns([4, 1, 1.5])
-input_tickers = c1.text_input("", placeholder="Voeg tickers toe (bijv: NVDA, AAPL, BTC-USD)", label_visibility="collapsed").upper()
+input_tickers = c1.text_input("", placeholder="Voeg tickers toe (bv: NVDA, AAPL, BTC-USD)", label_visibility="collapsed").upper()
 
 if c2.button("➕ ADD TICKERS", use_container_width=True):
     if input_tickers:
@@ -149,19 +144,7 @@ for idx, item in enumerate(st.session_state.watchlist):
                         <span style="color:{status_color}; font-weight:bold; font-size:0.8rem;">{w['signal']}</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; margin-top:8px; color:#8b949e; font-size:0.85rem;">
-                        <span>Score: <b style="color:white;">{w['score']}</b></span>
-                        <span>Prijs: <b style="color:white;">${w['price']:.2f}</b></span>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            b1, b2 = st.columns([1, 1])
-            if b1.button(f"Bekijk {item}", key=f"v_{item}", use_container_width=True):
-                st.session_state.current_ticker = item
-                st.rerun()
-            if b2.button(f"Wis {item}", key=f"d_{item}", use_container_width=True):
-                st.session_state.watchlist.remove(item)
-                st.rerun()
+                        <span>Score
 
 
 
