@@ -7,28 +7,30 @@ import pandas as pd
 # 1. Pagina Configuratie
 st.set_page_config(page_title="SST ELITE TERMINAL", layout="wide")
 
+# Uitgebreide CSS voor kleuren, layout en glow-effecten
 st.markdown("""
     <style>
     .block-container { padding: 15px !important; background-color: #050608; }
     
-    /* KPI Kaarten */
+    /* KPI Kaarten boven de chart */
     .kpi-card {
-        background: linear-gradient(145deg, #0d1117, #161b22);
+        background: #0d1117;
         border: 1px solid #30363d;
         padding: 15px;
         border-radius: 12px;
         text-align: center;
     }
-    .kpi-value { font-size: 1.6rem; font-weight: 900; color: #ffffff; }
-    .kpi-label { font-size: 0.75rem; color: #8b949e; text-transform: uppercase; }
+    .kpi-value { font-size: 1.7rem; font-weight: 900; }
+    .kpi-label { font-size: 0.75rem; color: #8b949e; text-transform: uppercase; margin-bottom: 5px; }
     
     /* Watchlist Grid Blokken */
     .wl-box {
         background-color: #0d1117;
         border: 1px solid #30363d;
         border-radius: 8px;
-        padding: 10px;
+        padding: 12px;
         margin-bottom: 10px;
+        min-height: 85px;
         transition: 0.3s;
     }
     
@@ -56,14 +58,14 @@ st.markdown("""
     }
 
     .stButton button { 
-        border-radius: 4px; padding: 0px 5px; font-size: 0.7rem; height: 26px;
+        border-radius: 4px; padding: 0px 5px; font-size: 0.75rem; height: 30px;
     }
     </style>
     """, unsafe_allow_html=True)
 
 # 2. State Management
 if 'watchlist' not in st.session_state:
-    st.session_state.watchlist = ["NVDA", "AAPL", "BTC-USD", "ETH-USD", "TSLA", "MSFT", "AMZN"]
+    st.session_state.watchlist = ["NVDA", "AAPL", "BTC-USD", "ETH-USD", "TSLA"]
 if 'current_ticker' not in st.session_state:
     st.session_state.current_ticker = "NVDA"
 
@@ -102,48 +104,59 @@ def get_analysis(ticker_symbol):
 # --- UI: TOP BAR ---
 st.title("🚀 SST ELITE DASHBOARD")
 c1, c2, c3 = st.columns([4, 1, 1.5])
-quick_t = c1.text_input("", placeholder="Ticker toevoegen...", label_visibility="collapsed").upper()
+input_tickers = c1.text_input("", placeholder="Voeg tickers toe (bv: NVDA, AAPL, BTC-USD)", label_visibility="collapsed").upper()
 
-if c2.button("➕ ADD", use_container_width=True):
-    if quick_t and quick_t not in st.session_state.watchlist:
-        st.session_state.watchlist.append(quick_t)
+if c2.button("➕ ADD TICKERS", use_container_width=True):
+    if input_tickers:
+        new_list = [t.strip() for t in input_tickers.split(',') if t.strip()]
+        for t in new_list:
+            if t not in st.session_state.watchlist:
+                st.session_state.watchlist.append(t)
+        if new_list: st.session_state.current_ticker = new_list[0]
         st.rerun()
 
 if c3.button("🔍 SCAN & SORTEER", use_container_width=True):
-    with st.spinner('Scanning...'):
+    with st.spinner('Scannen...'):
         results = [get_analysis(t) for t in st.session_state.watchlist if get_analysis(t)]
         results.sort(key=lambda x: (x['priority'], x['score']), reverse=True)
         st.session_state.watchlist = [x['symbol'] for x in results]
         st.rerun()
 
-# --- UI: KPI & CHART ---
+# --- UI: KPI SECTIE (KLEUREN) ---
 active_data = get_analysis(st.session_state.current_ticker)
 if active_data:
     k1, k2, k3, k4, k5 = st.columns(5)
-    with k1: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Price</div><div class="kpi-value">${active_data["price"]:.2f}</div></div>', unsafe_allow_html=True)
-    with k2: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Score</div><div class="kpi-value">{active_data["score"]}</div></div>', unsafe_allow_html=True)
-    with k3: st.markdown(f'<div class="kpi-card"><div class="kpi-label">MACD</div><div class="kpi-value">{"BULL" if active_data["macd_bull"] else "BEAR"}</div></div>', unsafe_allow_html=True)
-    with k4: st.markdown(f'<div class="kpi-card"><div class="kpi-label">EMA</div><div class="kpi-value">{"OK" if active_data["ema_ok"] else "ZWAK"}</div></div>', unsafe_allow_html=True)
-    with k5: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Signal</div><div class="kpi-value">{active_data["signal"]}</div></div>', unsafe_allow_html=True)
+    
+    # Kleur definities
+    p_color = "#3fb950" if active_data['change'] >= 0 else "#f85149"
+    s_color = "#3fb950" if active_data['score'] > 60 else "#d29922" if active_data['score'] >= 40 else "#f85149"
+    m_color = "#3fb950" if active_data['macd_bull'] else "#f85149"
+    e_color = "#3fb950" if active_data['ema_ok'] else "#f85149"
+    sig = active_data['signal']
+    sig_color = "#3fb950" if sig == "TREND" else "#2563eb" if sig == "BREAKOUT" else "#8b949e"
 
-    tv_html = f"""<div id="tv-chart" style="height: 450px; border: 1px solid #30363d; border-radius: 12px; margin-top: 15px;"></div>
+    with k1: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Price</div><div class="kpi-value" style="color:{p_color}">${active_data["price"]:.2f}</div></div>', unsafe_allow_html=True)
+    with k2: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Score</div><div class="kpi-value" style="color:{s_color}">{active_data["score"]}</div></div>', unsafe_allow_html=True)
+    with k3: st.markdown(f'<div class="kpi-card"><div class="kpi-label">MACD</div><div class="kpi-value" style="color:{m_color}">{"BULL" if active_data["macd_bull"] else "BEAR"}</div></div>', unsafe_allow_html=True)
+    with k4: st.markdown(f'<div class="kpi-card"><div class="kpi-label">EMA</div><div class="kpi-value" style="color:{e_color}">{"OK" if active_data["ema_ok"] else "ZWAK"}</div></div>', unsafe_allow_html=True)
+    with k5: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Signal</div><div class="kpi-value" style="color:{sig_color}">{sig}</div></div>', unsafe_allow_html=True)
+
+    # TradingView Chart
+    tv_html = f"""<div id="tv-chart" style="height: 500px; border: 1px solid #30363d; border-radius: 12px; margin-top: 15px;"></div>
     <script src="https://s3.tradingview.com/tv.js"></script>
     <script>new TradingView.widget({{"autosize": true, "symbol": "{active_data['symbol']}", "interval": "D", "theme": "dark", "container_id": "tv-chart"}});</script>"""
-    components.html(tv_html, height=470)
+    components.html(tv_html, height=520)
 
-# --- UI: GRID WATCHLIST ---
-st.write("### 📋 Watchlist Scanner")
-cols = st.columns(3) # Drie kolommen naast elkaar
+# --- UI: GRID WATCHLIST (3 KOLOMMEN) ---
+st.write("---")
+st.subheader("📋 Watchlist Scanner")
+cols = st.columns(3)
 
 for idx, item in enumerate(st.session_state.watchlist):
     w = get_analysis(item)
     if w:
-        glow_class = ""
-        status_color = "#8b949e"
-        if w['signal'] == "TREND": 
-            glow_class = "glow-green"; status_color = "#3fb950"
-        elif w['signal'] == "BREAKOUT": 
-            glow_class = "glow-blue"; status_color = "#2563eb"
+        glow_class = "glow-green" if w['signal'] == "TREND" else "glow-blue" if w['signal'] == "BREAKOUT" else ""
+        status_color = "#3fb950" if w['signal'] == "TREND" else "#2563eb" if w['signal'] == "BREAKOUT" else "#8b949e"
         
         with cols[idx % 3]:
             st.markdown(f"""
@@ -152,19 +165,18 @@ for idx, item in enumerate(st.session_state.watchlist):
                         <span style="color:white; font-weight:900; font-size:1.1rem;">{item}</span>
                         <span style="color:{status_color}; font-weight:bold; font-size:0.8rem;">{w['signal']}</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-top:5px;">
-                        <span style="color:#8b949e; font-size:0.8rem;">Score: <b>{w['score']}</b></span>
-                        <span style="color:#8b949e; font-size:0.8rem;">Price: <b>${w['price']:.2f}</b></span>
+                    <div style="display: flex; justify-content: space-between; margin-top:8px; color:#8b949e; font-size:0.85rem;">
+                        <span>Score: <b style="color:white;">{w['score']}</b></span>
+                        <span>Prijs: <b style="color:white;">${w['price']:.2f}</b></span>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
             
-            # Knoppen onder het blok
-            btn_col1, btn_col2 = st.columns([1, 1])
-            if btn_col1.button(f"Bekijk {item}", key=f"v_{item}", use_container_width=True):
+            b1, b2 = st.columns([1, 1])
+            if b1.button(f"Bekijk {item}", key=f"v_{item}", use_container_width=True):
                 st.session_state.current_ticker = item
                 st.rerun()
-            if btn_col2.button(f"Wis {item}", key=f"d_{item}", use_container_width=True):
+            if b2.button(f"Wis {item}", key=f"d_{item}", use_container_width=True):
                 st.session_state.watchlist.remove(item)
                 st.rerun()
 
