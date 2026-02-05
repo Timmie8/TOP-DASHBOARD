@@ -22,6 +22,15 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# Function to play notification sound
+def play_sound():
+    sound_html = """
+    <audio autoplay>
+    <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+    </audio>
+    """
+    st.markdown(sound_html, unsafe_allow_html=True)
+
 # 2. State Management
 if 'watchlist' not in st.session_state:
     st.session_state.watchlist = ["NVDA", "AAPL", "BTC-USD", "ETH-USD", "TSLA"]
@@ -37,7 +46,6 @@ def get_analysis(ticker_symbol):
         df = yf.download(ticker_symbol, period="1y", interval="1d", progress=False, auto_adjust=True)
         if df.empty or len(df) < 20: return None
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
-
         price = float(df['Close'].iloc[-1])
         change = ((price - df['Close'].iloc[-2]) / df['Close'].iloc[-2]) * 100
         rsi = ta.rsi(df['Close'], length=14).iloc[-1]
@@ -47,23 +55,21 @@ def get_analysis(ticker_symbol):
         upper_bb = ta.bbands(df['Close'], length=20).iloc[-1, 2]
         vol_avg = df['Volume'].rolling(20).mean().iloc[-1]
         vol_curr = df['Volume'].iloc[-1]
-
         score = max(min(int(50 + (change * 12)), 99), 5)
-        
         signal_val, signal_text = 0, "NONE"
         if price > upper_bb and ml > sl and price > e50 and vol_curr > vol_avg:
             signal_text = "BREAKOUT"; signal_val = 2
         elif price > e20 and price > e50 and price > e200 and ml > sl and 40 <= rsi <= 60:
             signal_text = "TREND"; signal_val = 1
-
         return {
             "symbol": ticker_symbol, "price": price, "score": score, "signal": signal_text, 
             "priority": signal_val, "macd_bull": ml > sl, "ema_ok": price > e20 and price > e50 and price > e200, "change": change
         }
     except: return None
 
-# --- SYNC DATA & NOTIFICATIONS ---
+# --- SYNC DATA & ALERTS ---
 alerts = []
+play_alert = False
 for t in st.session_state.watchlist:
     res = get_analysis(t)
     if res: 
@@ -71,18 +77,21 @@ for t in st.session_state.watchlist:
         if res['score'] >= 90:
             alerts.append(f"🔥 **{t}**: Extreme Momentum (Score: {res['score']})")
         if res['signal'] in ["BREAKOUT", "TREND"]:
-            alerts.append(f"📈 **{t}**: {res['signal']} Signal Detected!")
+            alerts.append(f"📈 **{t}**: {res['signal']} Signal!")
+            play_alert = True
+
+if play_alert:
+    play_sound()
 
 # --- UI: TOP BAR ---
 st.title("🚀 SST ELITE DASHBOARD")
 
-# Permanent Alert Section (remains visible until refresh/fix)
 if alerts:
     for alert in alerts:
-        st.error(alert)
+        st.warning(alert)
 
 c1, c2, c3 = st.columns([4, 1, 1.5])
-input_tickers = c1.text_input("", placeholder="Enter tickers (e.g., NVDA, AAPL, BTC-USD)", label_visibility="collapsed").upper()
+input_tickers = c1.text_input("", placeholder="Enter tickers (e.g., NVDA, AAPL)", label_visibility="collapsed").upper()
 
 if c2.button("➕ ADD TICKERS", use_container_width=True):
     if input_tickers:
@@ -118,35 +127,7 @@ if active_data:
     <script>new TradingView.widget({{"autosize": true, "symbol": "{active_data['symbol']}", "interval": "D", "theme": "dark", "container_id": "tv-chart"}});</script>"""
     components.html(tv_html, height=520)
 
-# --- UI: GRID WATCHLIST ---
-st.write("---")
-st.subheader("📋 Watchlist Scanner")
-cols = st.columns(3)
-for idx, item in enumerate(st.session_state.watchlist):
-    w = st.session_state.last_results.get(item)
-    if w:
-        glow = "glow-green" if w['signal'] == "TREND" else "glow-blue" if w['signal'] == "BREAKOUT" else ""
-        s_clr = "#3fb950" if w['signal'] == "TREND" else "#2563eb" if w['signal'] == "BREAKOUT" else "#8b949e"
-        with cols[idx % 3]:
-            st.markdown(f"""
-                <div class="wl-box {glow}">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="color:white; font-weight:900; font-size:1.1rem;">{item}</span>
-                        <span style="color:{s_clr}; font-weight:bold; font-size:0.8rem;">{w['signal']}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-top:8px; color:#8b949e; font-size:0.85rem;">
-                        <span>Score: <b style="color:white;">{w['score']}</b></span>
-                        <span>Price: <b style="color:white;">${w['price']:.2f}</b></span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            b1, b2 = st.columns(2)
-            if b1.button(f"View {item}", key=f"v_{item}", use_container_width=True):
-                st.session_state.current_ticker = item
-                st.rerun()
-            if b2.button(f"Delete {item}", key=f"d_{item}", use_container_width=True):
-                st.session_state.watchlist.remove(item)
-                st.rerun()
+# --- UI:
 
 
 
