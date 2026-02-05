@@ -22,7 +22,6 @@ def save_watchlist(watchlist):
     pd.DataFrame({'ticker': watchlist}).to_csv(WATCHLIST_FILE, index=False)
 
 # --- NAVIGATIE FUNCTIES ---
-# Deze functie zorgt ervoor dat de knop de sidebar écht omzet
 def go_to_guide():
     st.session_state.nav_radio = "User Guide"
 
@@ -36,16 +35,28 @@ st.markdown("""
     .kpi-card { background: linear-gradient(145deg, #0d1117, #161b22); border: 1px solid #30363d; padding: 15px; border-radius: 12px; text-align: center; }
     .kpi-value { font-size: 1.6rem; font-weight: 800; color: white; }
     .kpi-label { font-size: 0.65rem; color: #8b949e; text-transform: uppercase; }
+    
+    /* Score Kleuren */
     .score-high { color: #3fb950 !important; text-shadow: 0 0 12px rgba(63, 185, 80, 0.6); }
     .score-mid { color: #d29922 !important; text-shadow: 0 0 10px rgba(210, 153, 34, 0.6); }
     .score-low { color: #f85149 !important; text-shadow: 0 0 10px rgba(248, 81, 73, 0.6); }
+    
+    /* Prijs Kleuren */
+    .text-bull { color: #3fb950 !important; }
+    .text-bear { color: #f85149 !important; }
+    
     .earnings-imminent { 
         background: rgba(248, 81, 73, 0.15); border: 1px solid #f85149; color: #f85149; 
         padding: 12px; border-radius: 8px; font-weight: bold; text-align: center;
         animation: blink 2s infinite; margin-bottom: 15px;
     }
     @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+    
+    /* Watchlist Kaart Styling */
     .wl-card { background: #0d1117; border: 1px solid #30363d; border-radius: 12px; padding: 15px; margin-bottom: 5px; }
+    .wl-card b { color: #ffffff !important; font-size: 1.2rem; }
+    .score-label-white { color: #ffffff !important; font-weight: bold; }
+    
     .stButton > button { background-color: #1c2128 !important; color: #ffffff !important; border: 1px solid #444c56 !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -84,32 +95,31 @@ def get_analysis(ticker_symbol):
 # --- SIDEBAR NAVIGATION ---
 with st.sidebar:
     st.title("SST NAVIGATION")
-    # De 'key' is hier nav_radio. De knoppen veranderen deze key direct.
     page = st.radio("Go to:", ["Elite Terminal", "User Guide"], key="nav_radio")
     st.write("---")
-    st.info("v2.5 - Stable Navigation")
+    st.info("v2.6 - Colors Fixed")
 
 # --- PAGE 1: TERMINAL ---
 if page == "Elite Terminal":
-    # Header met Werkende Help knop (on_click methode)
+    # Header
     head_col1, head_col2 = st.columns([5, 1])
     with head_col1:
         st.title("SST ELITE TERMINAL")
     with head_col2:
-        st.write("") # Padding
+        st.write("") 
         st.button("📖 HELP / GUIDE", on_click=go_to_guide, use_container_width=True)
 
-    # State
+    # State Init
     if 'watchlist' not in st.session_state: st.session_state.watchlist = load_watchlist()
     if 'current_ticker' not in st.session_state: st.session_state.current_ticker = st.session_state.watchlist[0]
     if 'last_results' not in st.session_state: st.session_state.last_results = {}
 
-    # Sync data
+    # Data Sync
     for t in st.session_state.watchlist:
         res = get_analysis(t)
         if res: st.session_state.last_results[t] = res
 
-    # UI Controls
+    # Controls
     c1, c2, c3 = st.columns([4, 1, 1.5])
     input_tickers = c1.text_input("", placeholder="Ticker toevoegen...", key="ticker_input").upper()
 
@@ -125,7 +135,7 @@ if page == "Elite Terminal":
 
     active_data = st.session_state.last_results.get(st.session_state.current_ticker)
     if active_data:
-        # Earnings indicator
+        # Earnings Warning
         today = datetime.now().date()
         earn_str = "N/A"
         raw_earn = active_data.get("earnings")
@@ -135,18 +145,19 @@ if page == "Elite Terminal":
             if 0 <= (earn_date - today).days <= 2:
                 st.markdown(f'<div class="earnings-imminent">⚠️ EARNINGS WAARSCHUWING: {active_data["symbol"]} ({earn_str})</div>', unsafe_allow_html=True)
 
-        # KPI Rij
+        # KPI Main Display
         s_val = active_data["score"]
         s_class = "score-high" if s_val >= 60 else "score-mid" if s_val >= 40 else "score-low"
+        p_class = "text-bull" if active_data["change"] >= 0 else "text-bear"
         
         k1, k2, k3, k4, k5 = st.columns(5)
-        with k1: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Price</div><div class="kpi-value">${active_data["price"]:.2f}</div></div>', unsafe_allow_html=True)
+        with k1: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Price</div><div class="kpi-value {p_class}">${active_data["price"]:.2f}</div></div>', unsafe_allow_html=True)
         with k2: st.markdown(f'<div class="kpi-card"><div class="kpi-label">AI Score</div><div class="kpi-value {s_class}">{s_val}</div></div>', unsafe_allow_html=True)
-        with k3: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Earnings</div><div class="kpi-value" style="font-size:1.1rem;">{earn_str}</div></div>', unsafe_allow_html=True)
-        with k4: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Health</div><div class="kpi-value">{"OK" if active_data["ema_ok"] else "WEAK"}</div></div>', unsafe_allow_html=True)
-        with k5: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Signal</div><div class="kpi-value">{active_data["signal"]}</div></div>', unsafe_allow_html=True)
+        with k3: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Earnings</div><div class="kpi-value" style="font-size:1.1rem; color:white;">{earn_str}</div></div>', unsafe_allow_html=True)
+        with k4: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Health</div><div class="kpi-value {"text-bull" if active_data["ema_ok"] else "text-bear"}">{"OK" if active_data["ema_ok"] else "WEAK"}</div></div>', unsafe_allow_html=True)
+        with k5: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Signal</div><div class="kpi-value" style="color:white;">{active_data["signal"]}</div></div>', unsafe_allow_html=True)
 
-        # Chart & Watchlist Grid... (Blijft hetzelfde)
+        # Chart
         st.write("")
         col_chart, col_alerts = st.columns([3, 1])
         with col_chart:
@@ -163,16 +174,30 @@ if page == "Elite Terminal":
                     if r and r['score'] >= 85: 
                         st.markdown(f'<div style="color:#d29922; font-size:0.8rem; padding:5px 0; border-bottom:1px solid #333;">🔥 {item}: Momentum</div>', unsafe_allow_html=True)
 
-    # Watchlist Grid
+    # --- WATCHLIST GRID MET KLEUREN ---
     st.write("---")
     cols = st.columns(3)
     for idx, item in enumerate(st.session_state.watchlist):
         w = st.session_state.last_results.get(item)
         if w:
+            sw_c = "score-high" if w['score'] >= 60 else "score-mid" if w['score'] >= 40 else "score-low"
+            price_c = "text-bull" if w['change'] >= 0 else "text-bear"
+            
             with cols[idx % 3]:
-                st.markdown(f'<div class="wl-card"><b>{item}</b><br>Score: <span class="score-high">{w["score"]}</span></div>', unsafe_allow_html=True)
-                if st.button("VIEW", key=f"v_{item}", use_container_width=True):
+                st.markdown(f"""<div class="wl-card">
+                    <div style="display:flex; justify-content:space-between;"><b>{item}</b><span style="color:#8b949e; font-size:0.75rem; font-weight:bold;">{w['signal']}</span></div>
+                    <div style="display:flex; justify-content:space-between; margin-top:10px;">
+                        <span class="{price_c}" style="font-weight:bold;">${w['price']:.2f}</span>
+                        <span class="score-label-white">Score: <span class="{sw_c}">{w['score']}</span></span>
+                    </div></div>""", unsafe_allow_html=True)
+                
+                b1, b2 = st.columns(2)
+                if b1.button("VIEW", key=f"v_{item}", use_container_width=True):
                     st.session_state.current_ticker = item
+                    st.rerun()
+                if b2.button("DEL", key=f"d_{item}", use_container_width=True):
+                    st.session_state.watchlist.remove(item)
+                    save_watchlist(st.session_state.watchlist)
                     st.rerun()
 
 # --- PAGE 2: USER GUIDE ---
@@ -192,15 +217,10 @@ elif page == "User Guide":
     with st.expander("2. Active Signals", expanded=True):
         st.write("Under **Signal**, you will see the active signal if one is available, for example a **Breakout**.")
 
-    with st.expander("3. How to use the Terminal", expanded=True):
-        st.write("You can follow the AI Score, the Signal, or combine both.")
-
-    with st.expander("4. Watchlist & Sync", expanded=True):
-        st.write("Press **Add** to save a ticker and **Sync** to update the scores.")
-
     st.divider()
     st.button("Return to Terminal", on_click=go_to_terminal, type="primary")
     st.markdown("**Team SST (Swingstocktraders)**")
+
 
 
 
