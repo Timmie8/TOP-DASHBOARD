@@ -160,6 +160,21 @@ if active_data:
                     <b style="color:#2563eb">⚡ SIGNAL DETECTED</b><br><span style="font-size:0.9rem">Check the live signal sidebar.</span>
                 </div>
                 <script>setTimeout(()=>{{document.getElementById('popup').style.display='none'}}, 20000);</script>
+            """, height=0)
+
+# --- UI: WATCHLIST GRID ---
+st.write("---")
+cols = st.columns(3)
+for idx, item in enumerate(st.session_state.watchlist):
+    w = st.session_state.last_results.get(item)
+    if w:
+        alert_c = "alert-trend" if w['signal'] == "TREND" else "alert-breakout" if w['signal'] == "BREAKOUT" else ""
+        badge_c = "badge-trend" if w['signal'] == "TREND" else "badge-breakout" if w['signal'] == "BREAKOUT" else "badge-none"
+        sw_c = "score-high" if w['score'] >= 60 else "score-mid" if w['score'] >= 40 else "score-low"
+        price_c = "text-bull" if w['change'] >= 0 else "text-bear"
+        
+        with
+
 
 
 
