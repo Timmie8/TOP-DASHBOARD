@@ -11,7 +11,7 @@ st.markdown("""
     <style>
     .block-container { padding: 1.5rem !important; background-color: #050608; }
     
-    /* KPI Cards Redesign */
+    /* Professional Card Layout */
     .kpi-card {
         background: linear-gradient(145deg, #0d1117, #161b22);
         border: 1px solid #30363d;
@@ -23,32 +23,33 @@ st.markdown("""
     .kpi-value { font-size: 1.8rem; font-weight: 800; letter-spacing: -1px; }
     .kpi-label { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
 
-    /* Professional Watchlist Table */
-    .wl-container {
+    /* Professional Watchlist Grid Cards */
+    .wl-card {
         background: #0d1117;
         border: 1px solid #30363d;
         border-radius: 12px;
-        overflow: hidden;
-        margin-top: 10px;
+        padding: 15px;
+        margin-bottom: 15px;
+        transition: transform 0.2s, border 0.2s;
     }
-    .wl-row {
-        display: flex;
-        align-items: center;
-        padding: 12px 20px;
-        border-bottom: 1px solid #21262d;
-        transition: background 0.2s ease;
+    .wl-card:hover {
+        border-color: #58a6ff;
+        transform: translateY(-2px);
     }
-    .wl-row:hover { background: #161b22; }
-    .wl-col-sym { flex: 1; font-weight: 700; color: #ffffff; font-size: 1.1rem; }
-    .wl-col-price { flex: 1; text-align: right; font-family: 'Courier New', monospace; font-weight: 600; }
-    .wl-col-score { flex: 1; text-align: center; }
-    .wl-col-sig { flex: 1; text-align: right; }
+    .wl-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .wl-symbol { font-size: 1.2rem; font-weight: 900; color: #ffffff; }
+    .wl-price { font-family: 'Courier New', monospace; font-weight: 700; font-size: 1.1rem; }
+    
+    /* Dynamic Score Colors */
+    .score-high { color: #3fb950; text-shadow: 0 0 10px rgba(63, 185, 80, 0.4); }
+    .score-mid { color: #d29922; text-shadow: 0 0 10px rgba(210, 153, 34, 0.4); }
+    .score-low { color: #f85149; text-shadow: 0 0 10px rgba(248, 81, 73, 0.4); }
     
     /* Signal Badges */
     .badge {
         padding: 4px 10px;
         border-radius: 6px;
-        font-size: 0.7rem;
+        font-size: 0.65rem;
         font-weight: 900;
         text-transform: uppercase;
     }
@@ -56,14 +57,11 @@ st.markdown("""
     .badge-breakout { background: rgba(37, 99, 235, 0.15); color: #2563eb; border: 1px solid #2563eb; }
     .badge-none { background: rgba(139, 148, 158, 0.1); color: #8b949e; border: 1px solid #30363d; }
     
-    /* Score Indicator dots */
-    .dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-    
     .stButton button { 
         background-color: #21262d; border: 1px solid #30363d; color: #c9d1d9;
-        font-size: 0.7rem; height: 28px; transition: 0.2s;
+        font-size: 0.7rem; width: 100%; height: 30px;
     }
-    .stButton button:hover { border-color: #8b949e; background: #30363d; }
+    .stButton button:hover { border-color: #58a6ff; color: #58a6ff; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -148,9 +146,13 @@ if c3.button("🔄 SYNC & SORT", use_container_width=True):
 active_data = st.session_state.last_results.get(st.session_state.current_ticker) or get_analysis(st.session_state.current_ticker)
 
 if active_data:
+    # Kleur bepalen voor Momentum Score
+    s_val = active_data["score"]
+    s_class = "score-high" if s_val >= 60 else "score-mid" if s_val >= 40 else "score-low"
+    
     k1, k2, k3, k4, k5 = st.columns(5)
     with k1: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Price</div><div class="kpi-value" style="color:{"#3fb950" if active_data["change"] >= 0 else "#f85149"}">${active_data["price"]:.2f}</div></div>', unsafe_allow_html=True)
-    with k2: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Momentum Score</div><div class="kpi-value">{active_data["score"]}</div></div>', unsafe_allow_html=True)
+    with k2: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Momentum Score</div><div class="kpi-value {s_class}">{s_val}</div></div>', unsafe_allow_html=True)
     with k3: st.markdown(f'<div class="kpi-card"><div class="kpi-label">MACD</div><div class="kpi-value" style="color:{"#3fb950" if active_data["macd_bull"] else "#f85149"}">{"BULL" if active_data["macd_bull"] else "BEAR"}</div></div>', unsafe_allow_html=True)
     with k4: st.markdown(f'<div class="kpi-card"><div class="kpi-label">EMA Stack</div><div class="kpi-value" style="color:{"#3fb950" if active_data["ema_ok"] else "#f85149"}">{"HEALTHY" if active_data["ema_ok"] else "WEAK"}</div></div>', unsafe_allow_html=True)
     with k5: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Signal</div><div class="kpi-value" style="color:{"#3fb950" if active_data["signal"] != "NONE" else "#8b949e"}">{active_data["signal"]}</div></div>', unsafe_allow_html=True)
@@ -160,48 +162,41 @@ if active_data:
     <script>new TradingView.widget({{"autosize": true, "symbol": "{active_data['symbol']}", "interval": "D", "theme": "dark", "container_id": "tv-chart"}});</script>"""
     components.html(tv_html, height=500)
 
-# --- UI: PROFESSIONAL WATCHLIST ---
+# --- UI: 3-COLUMN WATCHLIST GRID ---
 st.write("---")
 st.subheader("Market Monitor")
 
-# Table Header
-st.markdown("""
-    <div style="display: flex; padding: 10px 20px; color: #8b949e; font-size: 0.7rem; text-transform: uppercase; font-weight: bold; border-bottom: 1px solid #30363d;">
-        <span style="flex: 1;">Ticker</span>
-        <span style="flex: 1; text-align: right;">Price</span>
-        <span style="flex: 1; text-align: center;">Score</span>
-        <span style="flex: 1; text-align: right;">Status</span>
-        <span style="flex: 1; text-align: right;">Actions</span>
-    </div>
-""", unsafe_allow_html=True)
-
-for item in st.session_state.watchlist:
+cols = st.columns(3)
+for idx, item in enumerate(st.session_state.watchlist):
     w = st.session_state.last_results.get(item)
     if w:
         b_class = "badge-trend" if w['signal'] == "TREND" else "badge-breakout" if w['signal'] == "BREAKOUT" else "badge-none"
         p_clr = "#3fb950" if w['change'] >= 0 else "#f85149"
-        dot_clr = "#3fb950" if w['score'] > 60 else "#d29922" if w['score'] > 40 else "#f85149"
         
-        # Row Layout
-        row_html = f"""
-            <div class="wl-row">
-                <div class="wl-col-sym">{item}</div>
-                <div class="wl-col-price" style="color:{p_clr};">${w['price']:.2f}</div>
-                <div class="wl-col-score"><span class="dot" style="background:{dot_clr};"></span>{w['score']}</div>
-                <div class="wl-col-sig"><span class="badge {b_class}">{w['signal']}</span></div>
-                <div style="flex: 1; display: flex; justify-content: flex-end; gap: 5px;" id="btn-{item}"></div>
-            </div>
-        """
-        st.markdown(row_html, unsafe_allow_html=True)
+        # Kleur voor score in watchlist
+        sw_val = w['score']
+        sw_class = "score-high" if sw_val >= 60 else "score-mid" if sw_val >= 40 else "score-low"
         
-        # Buttons positioned under the row using columns for alignment
-        bc1, bc2, bc3, bc4, bc5 = st.columns([1,1,1,1,1])
-        with bc5:
-            bt1, bt2 = st.columns(2)
-            if bt1.button("VIEW", key=f"v_{item}"):
+        with cols[idx % 3]:
+            st.markdown(f"""
+                <div class="wl-card">
+                    <div class="wl-header">
+                        <span class="wl-symbol">{item}</span>
+                        <span class="badge {b_class}">{w['signal']}</span>
+                    </div>
+                    <div class="wl-header">
+                        <span class="wl-price" style="color:{p_clr};">${w['price']:.2f}</span>
+                        <span style="font-size: 0.75rem; color:#8b949e;">Score: <b class="{sw_class}" style="font-size:1rem;">{sw_val}</b></span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Action Buttons
+            btn1, btn2 = st.columns(2)
+            if btn1.button("VIEW", key=f"v_{item}"):
                 st.session_state.current_ticker = item
                 st.rerun()
-            if bt2.button("DEL", key=f"d_{item}"):
+            if btn2.button("DEL", key=f"d_{item}"):
                 st.session_state.watchlist.remove(item)
                 st.rerun()
 
