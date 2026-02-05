@@ -21,6 +21,14 @@ def load_watchlist():
 def save_watchlist(watchlist):
     pd.DataFrame({'ticker': watchlist}).to_csv(WATCHLIST_FILE, index=False)
 
+# --- NAVIGATIE FUNCTIES ---
+# Deze functie zorgt ervoor dat de knop de sidebar écht omzet
+def go_to_guide():
+    st.session_state.nav_radio = "User Guide"
+
+def go_to_terminal():
+    st.session_state.nav_radio = "Elite Terminal"
+
 # --- STYLING ---
 st.markdown("""
     <style>
@@ -31,8 +39,6 @@ st.markdown("""
     .score-high { color: #3fb950 !important; text-shadow: 0 0 12px rgba(63, 185, 80, 0.6); }
     .score-mid { color: #d29922 !important; text-shadow: 0 0 10px rgba(210, 153, 34, 0.6); }
     .score-low { color: #f85149 !important; text-shadow: 0 0 10px rgba(248, 81, 73, 0.6); }
-    .text-bull { color: #3fb950 !important; }
-    .text-bear { color: #f85149 !important; }
     .earnings-imminent { 
         background: rgba(248, 81, 73, 0.15); border: 1px solid #f85149; color: #f85149; 
         padding: 12px; border-radius: 8px; font-weight: bold; text-align: center;
@@ -72,49 +78,38 @@ def get_analysis(ticker_symbol):
         signal = "BREAKOUT" if (price > e50 and ml > sl) else "TREND" if (price > e20 and ml > sl) else "NONE"
         earn_date = get_earnings_info(ticker_symbol)
         return {"symbol": ticker_symbol, "price": price, "score": score, "signal": signal, 
-                "macd_bull": ml > sl, "ema_ok": price > e50, "change": change, "earnings": earn_date}
+                "ema_ok": price > e50, "change": change, "earnings": earn_date}
     except: return None
 
-# --- NAVIGATIE LOGICA ---
-if 'page_selection' not in st.session_state:
-    st.session_state.page_selection = "Elite Terminal"
-
-def switch_page(page_name):
-    st.session_state.page_selection = page_name
-    st.rerun()
-
-# Sidebar menu
+# --- SIDEBAR NAVIGATION ---
 with st.sidebar:
     st.title("SST NAVIGATION")
-    # De radiobutton wordt gekoppeld aan de session_state
-    page_options = ["Elite Terminal", "User Guide"]
-    page = st.radio("Go to:", page_options, index=page_options.index(st.session_state.page_selection), key="nav_radio")
-    st.session_state.page_selection = page
+    # De 'key' is hier nav_radio. De knoppen veranderen deze key direct.
+    page = st.radio("Go to:", ["Elite Terminal", "User Guide"], key="nav_radio")
     st.write("---")
-    st.info("v2.4 - Official Release")
+    st.info("v2.5 - Stable Navigation")
 
 # --- PAGE 1: TERMINAL ---
-if st.session_state.page_selection == "Elite Terminal":
-    # Header met Help knop
+if page == "Elite Terminal":
+    # Header met Werkende Help knop (on_click methode)
     head_col1, head_col2 = st.columns([5, 1])
     with head_col1:
         st.title("SST ELITE TERMINAL")
     with head_col2:
         st.write("") # Padding
-        if st.button("📖 HELP / GUIDE", use_container_width=True):
-            switch_page("User Guide")
+        st.button("📖 HELP / GUIDE", on_click=go_to_guide, use_container_width=True)
 
-    # Watchlist initialisatie
+    # State
     if 'watchlist' not in st.session_state: st.session_state.watchlist = load_watchlist()
     if 'current_ticker' not in st.session_state: st.session_state.current_ticker = st.session_state.watchlist[0]
     if 'last_results' not in st.session_state: st.session_state.last_results = {}
 
-    # Data ophalen
+    # Sync data
     for t in st.session_state.watchlist:
         res = get_analysis(t)
         if res: st.session_state.last_results[t] = res
 
-    # Zoekbalk en Knoppen
+    # UI Controls
     c1, c2, c3 = st.columns([4, 1, 1.5])
     input_tickers = c1.text_input("", placeholder="Ticker toevoegen...", key="ticker_input").upper()
 
@@ -130,6 +125,7 @@ if st.session_state.page_selection == "Elite Terminal":
 
     active_data = st.session_state.last_results.get(st.session_state.current_ticker)
     if active_data:
+        # Earnings indicator
         today = datetime.now().date()
         earn_str = "N/A"
         raw_earn = active_data.get("earnings")
@@ -150,7 +146,7 @@ if st.session_state.page_selection == "Elite Terminal":
         with k4: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Health</div><div class="kpi-value">{"OK" if active_data["ema_ok"] else "WEAK"}</div></div>', unsafe_allow_html=True)
         with k5: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Signal</div><div class="kpi-value">{active_data["signal"]}</div></div>', unsafe_allow_html=True)
 
-        # Chart
+        # Chart & Watchlist Grid... (Blijft hetzelfde)
         st.write("")
         col_chart, col_alerts = st.columns([3, 1])
         with col_chart:
@@ -175,21 +171,15 @@ if st.session_state.page_selection == "Elite Terminal":
         if w:
             with cols[idx % 3]:
                 st.markdown(f'<div class="wl-card"><b>{item}</b><br>Score: <span class="score-high">{w["score"]}</span></div>', unsafe_allow_html=True)
-                b_view, b_del = st.columns(2)
-                if b_view.button("VIEW", key=f"v_{item}", use_container_width=True):
+                if st.button("VIEW", key=f"v_{item}", use_container_width=True):
                     st.session_state.current_ticker = item
-                    st.rerun()
-                if b_del.button("DEL", key=f"d_{item}", use_container_width=True):
-                    st.session_state.watchlist.remove(item)
-                    save_watchlist(st.session_state.watchlist)
                     st.rerun()
 
 # --- PAGE 2: USER GUIDE ---
-elif st.session_state.page_selection == "User Guide":
+elif page == "User Guide":
     c1, c2 = st.columns([5, 1])
     c1.title("📖 SST User Guide")
-    if c2.button("🔙 BACK", use_container_width=True):
-        switch_page("Elite Terminal")
+    c2.button("🔙 BACK", on_click=go_to_terminal, use_container_width=True)
     
     st.info("Follow the instructions below to get the most out of the SST Elite Terminal.")
 
@@ -197,44 +187,20 @@ elif st.session_state.page_selection == "User Guide":
     st.write("At the top of the panel, you can select a stock of your choice. The system will then immediately analyze the stock and provide a score.")
 
     with st.expander("1. AI Score & Health", expanded=True):
-        st.write("""
-        The first box shows the **AI Score**. The AI method behind this score evaluates the short-term potential of the stock. 
-        The higher the score, the greater the chance that the stock will rise. 
-        
-        Under **Health**, you will find the strength of the overall technical analysis that supports this score.
-        """)
+        st.write("The first box shows the **AI Score**. The higher the score, the greater the chance that the stock will rise.")
 
     with st.expander("2. Active Signals", expanded=True):
-        st.write("""
-        Under **Signal**, you will see the active signal if one is available, for example a **Breakout**.
-        """)
+        st.write("Under **Signal**, you will see the active signal if one is available, for example a **Breakout**.")
 
     with st.expander("3. How to use the Terminal", expanded=True):
-        st.write("""
-        You can use the terminal in two ways:
-        * By following the **AI Score**, or
-        * By using the **Signal**.
-        
-        Of course, you can also choose to combine both for higher probability trades.
-        """)
+        st.write("You can follow the AI Score, the Signal, or combine both.")
 
     with st.expander("4. Watchlist & Sync", expanded=True):
-        st.write("""
-        When you press **Add**, the stock will be added to the watchlist below the chart. 
-        When you press the **Sync** button, the latest score is retrieved, ensuring that you are always up to date.
-        """)
-
-    with st.expander("5. Live Alerts", expanded=True):
-        st.write("""
-        Next to the chart, you will also see the signals that are currently active in the **Signals & Calendar** section.
-        """)
+        st.write("Press **Add** to save a ticker and **Sync** to update the scores.")
 
     st.divider()
-    st.markdown("### *Good luck with the terminal.*")
+    st.button("Return to Terminal", on_click=go_to_terminal, type="primary")
     st.markdown("**Team SST (Swingstocktraders)**")
-    
-    if st.button("Return to Terminal", type="primary"):
-        switch_page("Elite Terminal")
 
 
 
