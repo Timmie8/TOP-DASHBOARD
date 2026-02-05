@@ -6,14 +6,15 @@ import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 
 # 1. Pagina Configuratie & Autorefresh (elke 60 seconden)
-st.set_page_config(page_title="SST ELITE TERMINAL", layout="wide")
+st.set_page_config(page_title="SST ELITE REAL-TIME", layout="wide")
 st_autorefresh(interval=60 * 1000, key="datarefresh")
 
+# CSS voor styling, kleuren en de "Glow" effecten
 st.markdown("""
     <style>
     .block-container { padding: 15px !important; background-color: #050608; }
     
-    /* KPI Kaarten */
+    /* KPI Kaarten boven de chart */
     .kpi-card {
         background: #0d1117;
         border: 1px solid #30363d;
@@ -24,16 +25,19 @@ st.markdown("""
     .kpi-value { font-size: 1.7rem; font-weight: 900; }
     .kpi-label { font-size: 0.75rem; color: #8b949e; text-transform: uppercase; margin-bottom: 5px; }
     
-    /* Grid Watchlist */
+    /* Watchlist Grid Blokken */
     .wl-box {
         background-color: #0d1117;
         border-radius: 8px;
         padding: 12px;
         margin-bottom: 10px;
-        min-height: 80px;
+        min-height: 85px;
+        border: 1px solid #30363d;
     }
-    .glow-green { border: 2px solid #3fb950 !important; box-shadow: 0 0 10px rgba(63, 185, 80, 0.3); }
-    .glow-blue { border: 2px solid #2563eb !important; box-shadow: 0 0 10px rgba(37, 99, 235, 0.3); }
+    
+    /* Oplichtende Randen (Glow effect) */
+    .glow-green { border: 2px solid #3fb950 !important; box-shadow: 0 0 10px rgba(63, 185, 80, 0.4); }
+    .glow-blue { border: 2px solid #2563eb !important; box-shadow: 0 0 10px rgba(37, 99, 235, 0.4); }
     
     .stButton button { border-radius: 4px; font-size: 0.75rem; height: 30px; }
     </style>
@@ -46,7 +50,7 @@ if 'current_ticker' not in st.session_state:
     st.session_state.current_ticker = "NVDA"
 
 # 3. Analyse Functie
-@st.cache_data(ttl=55) # Cache data voor net iets minder dan de refresh rate
+@st.cache_data(ttl=55)
 def get_analysis(ticker_symbol):
     try:
         df = yf.download(ticker_symbol, period="1y", interval="1d", progress=False, auto_adjust=True)
@@ -79,24 +83,25 @@ def get_analysis(ticker_symbol):
     except: return None
 
 # --- UI: TOP BAR ---
-st.title("🚀 SST ELITE REAL-TIME")
+st.title("🚀 SST ELITE TERMINAL")
 c1, c2, c3 = st.columns([4, 1, 1.5])
-input_tickers = c1.text_input("", placeholder="Voeg meerdere tickers toe: AAPL, NVDA, BTC-USD", label_visibility="collapsed").upper()
+input_tickers = c1.text_input("", placeholder="Voeg tickers toe (bijv: NVDA, AAPL, BTC-USD)", label_visibility="collapsed").upper()
 
 if c2.button("➕ ADD TICKERS", use_container_width=True):
     if input_tickers:
-        new_list = [t.strip() for t in input_tickers.split(',')]
+        new_list = [t.strip() for t in input_tickers.split(',') if t.strip()]
         for t in new_list:
-            if t and t not in st.session_state.watchlist:
+            if t not in st.session_state.watchlist:
                 st.session_state.watchlist.append(t)
-        st.session_state.current_ticker = new_list[0]
+        if new_list: st.session_state.current_ticker = new_list[0]
         st.rerun()
 
 if c3.button("🔍 SCAN & SORTEER", use_container_width=True):
-    results = [get_analysis(t) for t in st.session_state.watchlist if get_analysis(t)]
-    results.sort(key=lambda x: (x['priority'], x['score']), reverse=True)
-    st.session_state.watchlist = [x['symbol'] for x in results]
-    st.rerun()
+    with st.spinner('Scannen...'):
+        results = [get_analysis(t) for t in st.session_state.watchlist if get_analysis(t)]
+        results.sort(key=lambda x: (x['priority'], x['score']), reverse=True)
+        st.session_state.watchlist = [x['symbol'] for x in results]
+        st.rerun()
 
 # --- UI: KPI SECTIE ---
 active_data = get_analysis(st.session_state.current_ticker)
@@ -119,31 +124,33 @@ if active_data:
     sig_color = "#3fb950" if sig == "TREND" else "#2563eb" if sig == "BREAKOUT" else "#8b949e"
     with k5: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Signal</div><div class="kpi-value" style="color:{sig_color}">{sig}</div></div>', unsafe_allow_html=True)
 
+    # Chart
     tv_html = f"""<div id="tv-chart" style="height: 550px; border: 1px solid #30363d; border-radius: 12px; margin-top: 15px;"></div>
     <script src="https://s3.tradingview.com/tv.js"></script>
     <script>new TradingView.widget({{"autosize": true, "symbol": "{active_data['symbol']}", "interval": "D", "theme": "dark", "container_id": "tv-chart"}});</script>"""
     components.html(tv_html, height=570)
 
-# --- UI: GRID WATCHLIST ---
+# --- UI: GRID WATCHLIST (3 KOLOMMEN) ---
 st.write("---")
+st.subheader("📋 Live Scanner")
 cols = st.columns(3)
 
 for idx, item in enumerate(st.session_state.watchlist):
     w = get_analysis(item)
     if w:
         glow_class = "glow-green" if w['signal'] == "TREND" else "glow-blue" if w['signal'] == "BREAKOUT" else ""
-        s_color = "#3fb950" if w['signal'] == "TREND" else "#2563eb" if w['signal'] == "BREAKOUT" else "#ffffff"
+        status_color = "#3fb950" if w['signal'] == "TREND" else "#2563eb" if w['signal'] == "BREAKOUT" else "#ffffff"
         
         with cols[idx % 3]:
             st.markdown(f"""
                 <div class="wl-box {glow_class}">
                     <div style="display: flex; justify-content: space-between;">
-                        <span style="color:white; font-weight:900;">{item}</span>
-                        <span style="color:{s_color}; font-weight:bold; font-size:0.8rem;">{w['signal']}</span>
+                        <span style="color:white; font-weight:900; font-size:1.1rem;">{item}</span>
+                        <span style="color:{status_color}; font-weight:bold; font-size:0.8rem;">{w['signal']}</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-top:5px; color:#8b949e; font-size:0.8rem;">
+                    <div style="display: flex; justify-content: space-between; margin-top:8px; color:#8b949e; font-size:0.85rem;">
                         <span>Score: <b style="color:white;">{w['score']}</b></span>
-                        <span>Price: <b style="color:white;">${w['price']:.2f}</b></span>
+                        <span>Prijs: <b style="color:white;">${w['price']:.2f}</b></span>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
