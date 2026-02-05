@@ -30,7 +30,7 @@ if 'current_ticker' not in st.session_state:
 if 'last_results' not in st.session_state:
     st.session_state.last_results = {}
 
-# 3. Analyse Functie (met Cache voor stabiliteit)
+# 3. Analyse Functie
 @st.cache_data(ttl=10)
 def get_analysis(ticker_symbol):
     try:
@@ -60,21 +60,19 @@ def get_analysis(ticker_symbol):
             "symbol": ticker_symbol, "price": price, "score": score, "signal": signal_text, 
             "priority": signal_val, "macd_bull": ml > sl, "ema_ok": price > e20 and price > e50 and price > e200, "change": change
         }
-    except Exception: return None
+    except: return None
 
-# --- SCANNING LOGIC ---
-all_data = {}
+# --- SYNC DATA ---
 for t in st.session_state.watchlist:
     res = get_analysis(t)
-    if res: all_data[t] = res
-st.session_state.last_results = all_data
+    if res: st.session_state.last_results[t] = res
 
 # --- UI: TOP BAR ---
 st.title("🚀 SST ELITE DASHBOARD")
 c1, c2, c3 = st.columns([4, 1, 1.5])
-input_tickers = c1.text_input("", placeholder="Voeg tickers toe (bv: NVDA, AAPL, BTC-USD)", label_visibility="collapsed").upper()
+input_tickers = c1.text_input("", placeholder="Tickers (bv: NVDA, AAPL)", label_visibility="collapsed").upper()
 
-if c2.button("➕ ADD TICKERS", use_container_width=True):
+if c2.button("➕ ADD", use_container_width=True):
     if input_tickers:
         new_list = [t.strip() for t in input_tickers.split(',') if t.strip()]
         for t in new_list:
@@ -82,11 +80,11 @@ if c2.button("➕ ADD TICKERS", use_container_width=True):
         st.rerun()
 
 if c3.button("🔍 SCAN & SORTEER", use_container_width=True):
-    sorted_list = sorted(st.session_state.watchlist, key=lambda x: (all_data.get(x, {}).get('priority', 0), all_data.get(x, {}).get('score', 0)), reverse=True)
-    st.session_state.watchlist = sorted_list
+    st.session_state.watchlist.sort(key=lambda x: (st.session_state.last_results.get(x, {}).get('priority', 0), 
+                                                 st.session_state.last_results.get(x, {}).get('score', 0)), reverse=True)
     st.rerun()
 
-# --- UI: KPI SECTIE (Gebruikt nu gesynchroniseerde data) ---
+# --- UI: KPI SECTIE ---
 active_data = st.session_state.last_results.get(st.session_state.current_ticker)
 if active_data:
     k1, k2, k3, k4, k5 = st.columns(5)
@@ -108,7 +106,7 @@ if active_data:
     <script>new TradingView.widget({{"autosize": true, "symbol": "{active_data['symbol']}", "interval": "D", "theme": "dark", "container_id": "tv-chart"}});</script>"""
     components.html(tv_html, height=520)
 
-# --- UI: GRID WATCHLIST (3 KOLOMMEN) ---
+# --- UI: GRID WATCHLIST ---
 st.write("---")
 cols = st.columns(3)
 for idx, item in enumerate(st.session_state.watchlist):
@@ -117,7 +115,26 @@ for idx, item in enumerate(st.session_state.watchlist):
         glow = "glow-green" if w['signal'] == "TREND" else "glow-blue" if w['signal'] == "BREAKOUT" else ""
         s_clr = "#3fb950" if w['signal'] == "TREND" else "#2563eb" if w['signal'] == "BREAKOUT" else "#8b949e"
         with cols[idx % 3]:
-            st.markdown(f'<div class="wl-box {glow}"><div style="
+            # HTML code opgesplitst om SyntaxErrors te voorkomen
+            st.markdown(f"""
+                <div class="wl-box {glow}">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color:white; font-weight:900; font-size:1.1rem;">{item}</span>
+                        <span style="color:{s_clr}; font-weight:bold; font-size:0.8rem;">{w['signal']}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top:8px; color:#8b949e; font-size:0.85rem;">
+                        <span>Score: <b style="color:white;">{w['score']}</b></span>
+                        <span>Prijs: <b style="color:white;">${w['price']:.2f}</b></span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            b1, b2 = st.columns(2)
+            if b1.button(f"Bekijk {item}", key=f"v_{item}", use_container_width=True):
+                st.session_state.current_ticker = item
+                st.rerun()
+            if b2.button(f"Wis {item}", key=f"d_{item}", use_container_width=True):
+                st.session_state.watchlist.remove(item)
+                st.rerun()
 
 
 
