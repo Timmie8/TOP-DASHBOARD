@@ -135,6 +135,7 @@ if active_data:
         <script src="https://s3.tradingview.com/tv.js"></script>
         <script>new TradingView.widget({{"autosize": true, "symbol": "{active_data['symbol']}", "interval": "D", "theme": "dark", "container_id": "tv-chart"}});</script>"""
         components.html(tv_html, height=510)
+    
     with col_alerts:
         st.markdown('<p style="color:#8b949e; font-size:0.75rem; font-weight:bold; margin-bottom:10px;">LIVE SIGNALS</p>', unsafe_allow_html=True)
         with st.container(height=465, border=True):
@@ -146,7 +147,42 @@ if active_data:
                         st.markdown(f'<div style="color:#d29922; font-size:0.85rem; padding:8px 0; border-bottom:1px solid #30363d; font-weight:600;">🔥 {item}: Momentum ({r["score"]})</div>', unsafe_allow_html=True)
                         found_alerts = True
                     if r['signal'] == "BREAKOUT":
-                        st.markdown(f'<div style="color:#2563eb; font-size:0.85rem; padding:8px 0; border-bottom:1px solid #30363
+                        st.markdown(f'<div style="color:#2563eb; font-size:0.85rem; padding:8px 0; border-bottom:1px solid #30363d; font-weight:600;">📈 {item}: BREAKOUT!</div>', unsafe_allow_html=True)
+                        found_alerts = True
+                    if r['signal'] == "TREND":
+                        st.markdown(f'<div style="color:#3fb950; font-size:0.85rem; padding:8px 0; border-bottom:1px solid #30363d; font-weight:600;">📈 {item}: TREND!</div>', unsafe_allow_html=True)
+                        found_alerts = True
+            if not found_alerts: st.write("Scanning...")
+
+# --- WATCHLIST GRID ---
+st.write("---")
+cols = st.columns(3)
+for idx, item in enumerate(st.session_state.watchlist):
+    w = st.session_state.last_results.get(item)
+    if w:
+        sw_c = "score-high" if w['score'] >= 60 else "score-mid" if w['score'] >= 40 else "score-low"
+        price_c = "text-bull" if w['change'] >= 0 else "text-bear"
+        sig_color = "color:#3fb950;" if w['signal'] == "TREND" else "color:#2563eb;" if w['signal'] == "BREAKOUT" else "color:#8b949e;"
+        border_c = "alert-trend" if w['signal'] == "TREND" else "alert-breakout" if w['signal'] == "BREAKOUT" else ""
+        
+        with cols[idx % 3]:
+            st.markdown(f"""<div class="wl-card {border_c}">
+                <div style="display:flex; justify-content:space-between;">
+                    <b>{item}</b>
+                    <span style="{sig_color} font-size:0.75rem; font-weight:bold;">{w['signal']}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-top:10px;">
+                    <span class="{price_c}" style="font-weight:bold;">${w['price']:.2f}</span>
+                    <span class="score-label-white">Score: <span class="{sw_c}">{w['score']}</span></span>
+                </div></div>""", unsafe_allow_html=True)
+            b1, b2 = st.columns(2)
+            if b1.button("VIEW", key=f"v_{item}", use_container_width=True): 
+                st.session_state.current_ticker = item
+                st.rerun()
+            if b2.button("DEL", key=f"d_{item}", use_container_width=True): 
+                st.session_state.watchlist.remove(item)
+                st.rerun()
+
 
 
 
